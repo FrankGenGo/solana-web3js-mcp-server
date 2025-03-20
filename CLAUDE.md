@@ -37,6 +37,26 @@ The Solana-web3js MCP server enables AI assistants like Claude to build and depl
 - `/src/utils/` - Utility functions and helpers
 - `/src/transport/` - Transport layer implementations
 
+## Agent Orchestration Strategy
+
+This project follows a specialized agent approach where the Project Manager (Claude) orchestrates multiple specialized agents working on different components of the system.
+
+### Agent Types
+
+1. **Architecture Agent** - Designs system components, interfaces, and flow
+2. **Implementation Agent** - Writes code for specific modules and components
+3. **Documentation Agent** - Creates user and developer documentation
+4. **Testing Agent** - Creates test scenarios and test implementations
+5. **Integration Agent** - Ensures components work together properly
+
+### Agent Communication Guidelines
+
+- Provide clear context about the project and component being worked on
+- Include relevant code/files that impact the current task
+- Specify detailed deliverables and success criteria
+- Establish boundaries for decision making authority
+- Provide guidance on coding style and project conventions
+
 ## Implementation Plan
 
 ### Phase 1: Core Infrastructure
@@ -69,3 +89,8 @@ The Solana-web3js MCP server enables AI assistants like Claude to build and depl
 - Integration tests for MCP server functionality
 - End-to-end tests for Solana operations
 - Test coverage targets: 85% for critical components
+
+## Repository
+
+- GitHub: https://github.com/FrankGenGo/solana-web3js-mcp-server
+- Issue tracking, pull requests, and project management through GitHub
