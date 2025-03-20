@@ -1,6 +1,6 @@
 # Solana-web3js MCP Server Implementation Plan
 
-## Phase 1: Core Infrastructure (Current Phase)
+## Phase 1: Core Infrastructure (Completed)
 
 - [x] Project Structure Setup
 - [x] Core Server Implementation (solana-server.ts)
@@ -9,26 +9,26 @@
 - [x] Logging System (logging.ts)
 - [x] Transport Layers
   - [x] Standard I/O Transport (stdio.ts)
-  - [ ] HTTP/SSE Transport (http.ts)
+  - [x] HTTP/SSE Transport (http.ts)
 - [x] Entry Point (index.ts)
 
-## Phase 2: Basic Tools (Next Phase)
+## Phase 2: Basic Tools (Current Phase)
 
 - [x] Account Management Tools
   - [x] Get Account Info Tool
   - [x] Check Account Balance Tool
   - [x] Find Program Accounts Tool
   - [x] Get Rent Exemption Tool
-- [ ] Transaction Operations Tools
-  - [ ] Create Transaction Tool
-  - [ ] Sign Transaction Tool
-  - [ ] Send Transaction Tool
-  - [ ] Simulate Transaction Tool
-  - [ ] Get Transaction Status Tool
-- [ ] Key Management Tools
-  - [ ] Generate Keypair Tool
-  - [ ] Import Keypair Tool
-  - [ ] Derive Keypair Tool
+- [x] Transaction Operations Tools
+  - [x] Create Transaction Tool
+  - [x] Sign Transaction Tool
+  - [x] Send Transaction Tool
+  - [x] Simulate Transaction Tool
+  - [x] Get Transaction Status Tool
+- [x] Key Management Tools
+  - [x] Generate Keypair Tool
+  - [x] Import Keypair Tool
+  - [x] Derive Keypair Tool
 
 ## Phase 3: Advanced Functionality
 

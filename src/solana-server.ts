@@ -4,63 +4,70 @@
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Connection } from "@solana/web3.js";
+import { getConnectionManager } from "./core/connection-manager.js";
+import { Logger, getLogger } from "./utils/logging.js";
+import { ServerError } from "./utils/errors.js";
 
 // Server version - update this when making significant changes
 const VERSION = "0.1.0";
 
-// Default Solana cluster endpoints
-const CLUSTERS = {
-  mainnet: "https://api.mainnet-beta.solana.com",
-  testnet: "https://api.testnet.solana.com",
-  devnet: "https://api.devnet.solana.com",
-  localnet: "http://localhost:8899",
-};
+// Get logger for this module
+const logger = getLogger("solana-server");
 
 /**
  * Creates and configures the Solana MCP server
  * @returns An object containing the server instance and a cleanup function
  */
 export function createSolanaServer() {
-  // Create connections to each Solana cluster
-  const connections = new Map<string, Connection>();
+  logger.info(`Creating Solana Web3.js MCP Server v${VERSION}`);
   
-  // Initialize connections
-  for (const [name, endpoint] of Object.entries(CLUSTERS)) {
-    connections.set(name, new Connection(endpoint));
+  try {
+    // Get the connection manager instance
+    const connectionManager = getConnectionManager();
+    
+    // Create the MCP server
+    const server = new McpServer({
+      name: "solana-web3js",
+      version: VERSION,
+    });
+
+    // Register tools from each module
+    // These will be imported and registered here once implemented
+    // registerAccountTools(server, connectionManager);
+    // registerTransactionTools(server, connectionManager);
+    // registerProgramTools(server, connectionManager);
+    // registerKeyTools(server);
+    // registerTokenTools(server, connectionManager);
+
+    // Register resources
+    // These will be imported and registered here once implemented
+    // registerClusterResources(server);
+    // registerTemplateResources(server);
+    // registerDocumentationResources(server);
+
+    // Register prompts
+    // These will be imported and registered here once implemented
+    // registerTransactionPrompts(server);
+    // registerProgramPrompts(server);
+    // registerTokenPrompts(server);
+
+    logger.info("Solana Web3.js MCP Server created successfully");
+
+    // Cleanup function to close connections when the server shuts down
+    const cleanup = async () => {
+      logger.info("Cleaning up Solana connections...");
+      try {
+        await connectionManager.cleanup();
+        Logger.shutdownAll();
+        logger.info("Cleanup completed successfully");
+      } catch (error) {
+        logger.error("Error during cleanup:", error);
+      }
+    };
+
+    return { server, cleanup };
+  } catch (error) {
+    logger.error("Failed to create Solana Web3.js MCP Server:", error);
+    throw new ServerError("Failed to create server", { cause: error });
   }
-
-  // Create the MCP server
-  const server = new McpServer({
-    name: "solana-web3js",
-    version: VERSION,
-  });
-
-  // Register tools from each module
-  // These will be imported and registered here once implemented
-  // registerAccountTools(server, connections);
-  // registerTransactionTools(server, connections);
-  // registerProgramTools(server, connections);
-  // registerKeyTools(server);
-  // registerTokenTools(server, connections);
-
-  // Register resources
-  // These will be imported and registered here once implemented
-  // registerClusterResources(server);
-  // registerTemplateResources(server);
-  // registerDocumentationResources(server);
-
-  // Register prompts
-  // These will be imported and registered here once implemented
-  // registerTransactionPrompts(server);
-  // registerProgramPrompts(server);
-  // registerTokenPrompts(server);
-
-  // Cleanup function to close connections when the server shuts down
-  const cleanup = async () => {
-    // Additional cleanup logic if needed
-    console.log("Cleaning up Solana connections...");
-  };
-
-  return { server, cleanup };
 }

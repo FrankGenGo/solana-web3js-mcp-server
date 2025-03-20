@@ -82,29 +82,33 @@ npm start
 
 ## Available Tools
 
-### Account Management
-- `get_account_info`: Fetch and decode account information
-- `get_balance`: Get SOL balance for an address
-- `get_token_accounts`: List all token accounts for an address
+### Account Management (Implemented)
+- `getAccountInfo`: Fetch and decode account information
+- `checkAccountBalance`: Get SOL balance for an address
+- `findProgramAccounts`: Find accounts owned by a program
+- `getRentExemption`: Calculate minimum balance for rent exemption
 
-### Transaction Management
-- `create_transaction`: Build a transaction with specified instructions
-- `simulate_transaction`: Simulate a transaction without sending it
-- `send_transaction`: Send and confirm a transaction on-chain
+### Transaction Management (Implemented)
+- `createTransaction`: Build a transaction with specified instructions
+- `signTransaction`: Sign a transaction with one or more keypairs
+- `sendTransaction`: Send and confirm a transaction on-chain
+- `simulateTransaction`: Simulate a transaction without sending it
+- `getTransactionStatus`: Check the status of a transaction
 
-### Program Development
-- `compile_program`: Compile a Rust program for Solana
-- `deploy_program`: Deploy a program to a Solana cluster
-- `generate_program_address`: Derive a program derived address (PDA)
+### Key Management (Implemented)
+- `generateKeypair`: Create a new Solana keypair
+- `importKeypair`: Import an existing keypair from various formats
+- `deriveKeypair`: Derive a keypair from seed, mnemonic, or path
 
-### Key Management
-- `generate_keypair`: Create a new Solana keypair
-- `derive_address`: Derive an address from a seed phrase or path
+### Program Development (Coming Soon)
+- `deployProgram`: Deploy a program to a Solana cluster
+- `upgradeProgram`: Upgrade an existing upgradeable program
+- `generateProgramAddress`: Derive a program derived address (PDA)
 
-### Network Management
-- `get_cluster_stats`: Get current stats for a Solana cluster
-- `get_transaction_fee`: Estimate transaction fees
-- `get_recent_blockhash`: Get a recent blockhash for transaction building
+### Token Operations (Coming Soon)
+- `createToken`: Create a new SPL token
+- `mintTokens`: Mint tokens to a token account
+- `transferTokens`: Transfer tokens between accounts
 
 ## Development
 
@@ -121,13 +125,24 @@ npm run lint
 
 ## Project Structure
 
-- `src/index.ts`: Main entry point using stdio transport
-- `src/sse.ts`: HTTP SSE transport implementation
+- `src/index.ts`: Main entry point
 - `src/solana-server.ts`: Core server implementation
+- `src/core/connection-manager.ts`: Solana connection management
+- `src/transport/stdio.ts`: Standard I/O transport implementation
+- `src/transport/http.ts`: HTTP/SSE transport implementation
 - `src/tools/`: Tool implementations for Solana operations
+  - `src/tools/accounts/`: Account management tools
+  - `src/tools/transactions/`: Transaction operations tools
+  - `src/tools/keys/`: Key management tools
 - `src/resources/`: Resource implementations for Solana data
 - `src/prompts/`: Reusable prompts for common workflows
 - `src/types/`: TypeScript type definitions
+  - `src/types/solana.ts`: Solana-specific type definitions
+  - `src/types/tools.ts`: Tool input/output type definitions
+  - `src/types/config.ts`: Configuration type definitions
+- `src/utils/`: Utility functions and classes
+  - `src/utils/errors.ts`: Error handling system
+  - `src/utils/logging.ts`: Logging system
 
 ## Extending the Server
 
