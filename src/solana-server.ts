@@ -7,6 +7,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getConnectionManager } from "./core/connection-manager.js";
 import { Logger, getLogger } from "./utils/logging.js";
 import { ServerError } from "./utils/errors.js";
+import { registerKeyTools } from "./tools/keys/index.js";
+import { registerTransactionTools } from "./tools/transactions/index.js";
 
 // Server version - update this when making significant changes
 const VERSION = "0.1.0";
@@ -32,11 +34,11 @@ export function createSolanaServer() {
     });
 
     // Register tools from each module
-    // These will be imported and registered here once implemented
+    // Uncomment these as they are implemented
     // registerAccountTools(server, connectionManager);
-    // registerTransactionTools(server, connectionManager);
+    registerTransactionTools(server, connectionManager);
     // registerProgramTools(server, connectionManager);
-    // registerKeyTools(server);
+    registerKeyTools(server);
     // registerTokenTools(server, connectionManager);
 
     // Register resources
