@@ -125,24 +125,26 @@ npm run lint
 
 ## Project Structure
 
-- `src/index.ts`: Main entry point
-- `src/solana-server.ts`: Core server implementation
-- `src/core/connection-manager.ts`: Solana connection management
-- `src/transport/stdio.ts`: Standard I/O transport implementation
-- `src/transport/http.ts`: HTTP/SSE transport implementation
+- `src/index.ts`: Main entry point (implemented)
+- `src/solana-server.ts`: Core server implementation (implemented)
+- `src/core/connection-manager.ts`: Solana connection management (implemented)
+- `src/transport/`: Transport layer implementations
+  - `src/transport/stdio.ts`: Standard I/O transport (implemented)
+  - `src/transport/http.ts`: HTTP/SSE transport (implemented)
+  - `src/transport/index.ts`: Transport exports (implemented)
 - `src/tools/`: Tool implementations for Solana operations
-  - `src/tools/accounts/`: Account management tools
-  - `src/tools/transactions/`: Transaction operations tools
-  - `src/tools/keys/`: Key management tools
-- `src/resources/`: Resource implementations for Solana data
-- `src/prompts/`: Reusable prompts for common workflows
+  - `src/tools/accounts/`: Account management tools (structure only)
+  - `src/tools/transactions/`: Transaction operations tools (structure only)
+  - `src/tools/keys/`: Key management tools (structure only)
+- `src/resources/`: Resource implementations for Solana data (planned)
+- `src/prompts/`: Reusable prompts for common workflows (planned)
 - `src/types/`: TypeScript type definitions
-  - `src/types/solana.ts`: Solana-specific type definitions
-  - `src/types/tools.ts`: Tool input/output type definitions
-  - `src/types/config.ts`: Configuration type definitions
+  - `src/types/solana.ts`: Solana-specific type definitions (partial implementation)
+  - `src/types/tools.ts`: Tool input/output type definitions (planned)
+  - `src/types/config.ts`: Configuration type definitions (planned)
 - `src/utils/`: Utility functions and classes
-  - `src/utils/errors.ts`: Error handling system
-  - `src/utils/logging.ts`: Logging system
+  - `src/utils/errors.ts`: Error handling system (implemented)
+  - `src/utils/logging.ts`: Logging system (implemented)
 
 ## Extending the Server
 
