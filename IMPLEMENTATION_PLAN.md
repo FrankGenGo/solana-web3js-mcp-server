@@ -32,9 +32,10 @@
 
 ## Phase 3: Advanced Functionality (Current Phase)
 
-- [ ] Program Deployment Tools
-  - [ ] Deploy Program Tool
-  - [ ] Upgrade Program Tool
+- [x] Program Deployment Tools
+  - [x] Deploy Program Tool
+  - [x] Upgrade Program Tool
+  - [x] Generate Program Address Tool
 - [ ] Token Operations Tools
   - [ ] Create Token Tool
   - [ ] Mint Tokens Tool
