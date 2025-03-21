@@ -133,9 +133,9 @@ npm run lint
   - `src/transport/http.ts`: HTTP/SSE transport (implemented)
   - `src/transport/index.ts`: Transport exports (implemented)
 - `src/tools/`: Tool implementations for Solana operations
-  - `src/tools/accounts/`: Account management tools (structure only)
-  - `src/tools/transactions/`: Transaction operations tools (structure only)
-  - `src/tools/keys/`: Key management tools (structure only)
+  - `src/tools/accounts/`: Account management tools (implemented)
+  - `src/tools/transactions/`: Transaction operations tools (implemented)
+  - `src/tools/keys/`: Key management tools (implemented)
 - `src/resources/`: Resource implementations for Solana data (planned)
 - `src/prompts/`: Reusable prompts for common workflows (planned)
 - `src/types/`: TypeScript type definitions

@@ -12,7 +12,7 @@
   - [x] HTTP/SSE Transport (http.ts) - Implemented
 - [x] Entry Point (index.ts) - Implemented
 
-## Phase 2: Basic Tools (Current Phase)
+## Phase 2: Basic Tools (Completed)
 
 - [x] Account Management Tools
   - [x] Get Account Info Tool
@@ -30,7 +30,7 @@
   - [x] Import Keypair Tool
   - [x] Derive Keypair Tool
 
-## Phase 3: Advanced Functionality
+## Phase 3: Advanced Functionality (Current Phase)
 
 - [ ] Program Deployment Tools
   - [ ] Deploy Program Tool
