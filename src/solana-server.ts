@@ -10,6 +10,7 @@ import { ServerError } from "./utils/errors.js";
 import { registerKeyTools } from "./tools/keys/index.js";
 import { registerTransactionTools } from "./tools/transactions/index.js";
 import { registerAccountTools } from "./tools/accounts/index.js";
+import { registerProgramTools } from "./tools/programs/index.js";
 
 // Server version - update this when making significant changes
 const VERSION = "0.1.0";
@@ -38,7 +39,7 @@ export function createSolanaServer() {
     // Uncomment these as they are implemented
     registerAccountTools(server, connectionManager);
     registerTransactionTools(server, connectionManager);
-    // registerProgramTools(server, connectionManager);
+    registerProgramTools(server, connectionManager);
     registerKeyTools(server);
     // registerTokenTools(server, connectionManager);
 

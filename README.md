@@ -100,7 +100,7 @@ npm start
 - `importKeypair`: Import an existing keypair from various formats
 - `deriveKeypair`: Derive a keypair from seed, mnemonic, or path
 
-### Program Development (Coming Soon)
+### Program Development (Implemented)
 - `deployProgram`: Deploy a program to a Solana cluster
 - `upgradeProgram`: Upgrade an existing upgradeable program
 - `generateProgramAddress`: Derive a program derived address (PDA)
@@ -136,6 +136,7 @@ npm run lint
   - `src/tools/accounts/`: Account management tools (implemented)
   - `src/tools/transactions/`: Transaction operations tools (implemented)
   - `src/tools/keys/`: Key management tools (implemented)
+  - `src/tools/programs/`: Program development tools (implemented)
 - `src/resources/`: Resource implementations for Solana data (planned)
 - `src/prompts/`: Reusable prompts for common workflows (planned)
 - `src/types/`: TypeScript type definitions
