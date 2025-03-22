@@ -186,6 +186,25 @@ const address = createProgramAddress(seeds, programId);
 const [pda, bump] = findProgramAddress(seeds, programId);
 ```
 
+#### Account Management
+```typescript
+// Old (v1.x)
+import { Connection, PublicKey } from '@solana/web3.js';
+const connection = new Connection(url);
+const accountInfo = await connection.getAccountInfo(new PublicKey(address));
+const balance = await connection.getBalance(new PublicKey(address));
+const programAccounts = await connection.getProgramAccounts(new PublicKey(programId));
+const rentExemption = await connection.getMinimumBalanceForRentExemption(size);
+
+// New (v2.0)
+import { createSolanaRpc } from '@solana/web3.js';
+const rpcClient = createSolanaRpc(url);
+const accountInfo = await rpcClient.getAccountInfo(address).send();
+const balance = await rpcClient.getBalance(address).send();
+const programAccounts = await rpcClient.getProgramAccounts(programId).send();
+const rentExemption = await rpcClient.getMinimumBalanceForRentExemption(size).send();
+```
+
 #### Transactions (To Be Implemented)
 ```typescript
 // Old (v1.x)

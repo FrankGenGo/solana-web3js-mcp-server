@@ -16,6 +16,12 @@ This document outlines the next steps for the Solana-web3js MCP server project f
     - Migrated key tools (generate.ts, import.ts)
     - Updated types/solana.ts
     - Migrated program address tools
+    - Migrated account management tools
+      - info.ts - Get account information
+      - balance.ts - Check account balances
+      - find.ts - Find program accounts
+      - rent.ts - Calculate rent exemption
+      - index.ts - Register account tools
 
 - **Current TypeScript Errors**: Remaining errors in files not yet migrated to web3.js v2.0
   - These errors are primarily related to compatibility with web3.js v2.0
@@ -28,9 +34,7 @@ This document outlines the next steps for the Solana-web3js MCP server project f
 The migration has been started, and several key components have been updated. Continue following the detailed migration plan in `migration_plan.md`:
 
 1. **Complete Tool Migration in This Order**:
-   - Account Management Tools
-     - Update `/src/tools/accounts/index.ts` and related files
-   - Transaction Tools
+   - Transaction Tools (Next)
      - Update transaction creation, signing, and sending functionality
      - Focus on adapting to the functional message composition pattern
    - Program Tools

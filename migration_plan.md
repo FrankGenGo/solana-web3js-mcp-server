@@ -18,10 +18,14 @@ This document outlines the step-by-step plan for migrating the Solana-web3js MCP
     - `/src/tools/keys/import.ts` - Updated to use `importKeyPair()`
   - Migrated program address tools:
     - `/src/tools/programs/address.ts` - Updated to use `createProgramAddress()` and `findProgramAddress()`
+  - Migrated account management tools:
+    - `/src/tools/accounts/info.ts` - Updated to use RPC client with `.send()` pattern
+    - `/src/tools/accounts/balance.ts` - Updated to use RPC client with `.send()` pattern
+    - `/src/tools/accounts/find.ts` - Updated to use RPC client with `.send()` pattern
+    - `/src/tools/accounts/rent.ts` - Updated to use RPC client with `.send()` pattern
+    - `/src/tools/accounts/index.ts` - Updated to register migrated tools
 
 - **Pending Migration Tasks**:
-  - The remaining TypeScript errors need to be fixed
-  - Account management tools need to be migrated
   - Transaction tools need to be migrated to use the new message composition pattern
   - Program deployment tools need to be updated
   - Entry points and transport layers need to be fixed

@@ -1,3 +1,13 @@
+/**
+ * Account Management Tools
+ * 
+ * This module exports tools for managing Solana accounts, including:
+ * - Getting account information
+ * - Checking account balances
+ * - Finding program accounts
+ * - Calculating rent exemption
+ */
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getAccountInfoTool } from './info.js';
 import { checkAccountBalanceTool } from './balance.js';
@@ -40,32 +50,20 @@ export function registerAccountTools(server: McpServer, connectionManager: Conne
     (params) => findProgramAccountsTool.execute(params)
   );
   
+  // For the rent exemption tool, use the tool factory pattern
+  const rentExemptionTool = getRentExemptionTool();
   server.tool(
-    'getRentExemption',
-    'Calculate the minimum balance required for rent exemption based on data size',
-    {
-      type: 'object',
-      properties: {
-        size: {
-          type: 'number',
-          description: 'The size of account data in bytes'
-        },
-        cluster: {
-          type: 'string',
-          description: 'Solana cluster to use (mainnet-beta, testnet, devnet, or custom URL)',
-          default: 'mainnet-beta'
-        }
-      },
-      required: ['size']
-    },
-    async (params) => {
-      const tool = getRentExemptionTool();
-      return tool.handler({ 
-        size: params.size, 
-        cluster: params.cluster || 'mainnet-beta' 
-      });
-    }
+    rentExemptionTool.name,
+    rentExemptionTool.description,
+    rentExemptionTool.parameters,
+    (params) => rentExemptionTool.handler(params)
   );
   
   logger.info('Account management tools registered successfully');
 }
+
+// Export tool interfaces for use in other modules
+export { GetAccountInfoParams, GetAccountInfoResult } from './info.js';
+export { CheckAccountBalanceParams, CheckAccountBalanceResult } from './balance.js';
+export { FindProgramAccountsParams, FindProgramAccountsResult } from './find.js';
+export { GetRentExemptionParams, GetRentExemptionResult } from './rent.js';

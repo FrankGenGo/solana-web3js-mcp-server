@@ -82,7 +82,7 @@ This project follows a specialized agent approach where the Project Manager (Cla
    - ✅ Connection Manager migration
    - ✅ Key management tools migration
    - ✅ Program address tools migration
-   - ⬜ Account management tools migration
+   - ✅ Account management tools migration
    - ⬜ Transaction tools migration
    - ⬜ Program deployment tools migration
 2. ⬜ Implement comprehensive test suite
