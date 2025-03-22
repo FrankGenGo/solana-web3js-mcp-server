@@ -6,7 +6,11 @@
  * the Solana web3.js library.
  */
 
-import { PublicKey } from "@solana/web3.js";
+import { 
+  createProgramAddress, 
+  findProgramAddress,
+  Address
+} from "@solana/web3.js";
 import { getLogger } from "../../utils/logging.js";
 import { PublicKeyError, ValidationError, tryCatch } from "../../utils/errors.js";
 import { z } from "zod";
@@ -105,10 +109,13 @@ function convertSeedToBuffer(seed: z.infer<typeof seedItemSchema>): Uint8Array {
     }
     
     case SeedType.PUBKEY: {
-      // Parse public key and get its bytes
+      // Use provided public key - in v2.0 we work with strings directly
       try {
-        const pubkey = new PublicKey(seed.value);
-        return pubkey.toBytes();
+        // For v2.0, we can just return the bytes of the base58 string
+        const address = seed.value as Address;
+        // Convert address to bytes if needed
+        const encoder = new TextEncoder();
+        return encoder.encode(address);
       } catch (error) {
         logger.error("Failed to parse public key seed", error);
         throw new ValidationError(
@@ -143,10 +150,10 @@ async function executeGenerateProgramAddress(
     // Execute the address generation
     return tryCatch(async () => {
       // Parse the program ID
-      let programId: PublicKey;
+      let programId: Address;
       try {
-        programId = new PublicKey(validatedParams.programId);
-        logger.debug("Parsed program ID", { programId: programId.toString() });
+        programId = validatedParams.programId as Address;
+        logger.debug("Using program ID", { programId: programId });
       } catch (error) {
         logger.error("Failed to parse program ID", error);
         throw new ValidationError(
@@ -194,17 +201,17 @@ async function executeGenerateProgramAddress(
       if (validatedParams.functionType === PdaFunctionType.CREATE) {
         // Use createProgramAddress
         try {
-          const address = PublicKey.createProgramAddressSync(
+          const address = createProgramAddress(
             seedBuffers,
             programId
           );
           
           logger.info("Successfully created program address", {
-            address: address.toString(),
+            address: address,
           });
           
           return {
-            address: address.toString(),
+            address: address,
             isOnCurve: false, // CreateProgramAddress always returns off-curve addresses
           };
         } catch (error) {
@@ -217,18 +224,18 @@ async function executeGenerateProgramAddress(
       } else {
         // Use findProgramAddress (which includes a bump seed)
         try {
-          const [address, bumpSeed] = PublicKey.findProgramAddressSync(
+          const [address, bumpSeed] = findProgramAddress(
             seedBuffers,
             programId
           );
           
           logger.info("Successfully found program address with bump seed", {
-            address: address.toString(),
+            address: address,
             bumpSeed,
           });
           
           return {
-            address: address.toString(),
+            address: address,
             bumpSeed,
             isOnCurve: false, // FindProgramAddress always returns off-curve addresses
           };

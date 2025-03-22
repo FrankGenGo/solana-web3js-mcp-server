@@ -10,7 +10,8 @@
  * would be required (bs58 and bip39 packages respectively).
  */
 
-import { Keypair } from '@solana/web3.js';
+import { importKeyPair } from '@solana/web3.js';
+import type { KeyPair } from '@solana/web3.js';
 import { getLogger } from '../../utils/logging.js';
 import { PublicKeyError, ValidationError, tryCatchSync } from '../../utils/errors.js';
 import { z } from 'zod';
@@ -60,7 +61,7 @@ function executeImportKeypair(params: ImportKeypairParams) {
         // Import from secret key (either array or string)
         if (Array.isArray(validatedParams.secretKey)) {
           // If array of numbers, convert to Uint8Array
-          return Keypair.fromSecretKey(Uint8Array.from(validatedParams.secretKey));
+          return importKeyPair(Uint8Array.from(validatedParams.secretKey));
         } else {
           // If string, try to parse as comma-separated numbers or hex
           try {
@@ -69,12 +70,12 @@ function executeImportKeypair(params: ImportKeypairParams) {
               const secretKeyArray = validatedParams.secretKey
                 .split(',')
                 .map(s => parseInt(s.trim(), 10));
-              return Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
+              return importKeyPair(Uint8Array.from(secretKeyArray));
             } 
             // Try as hex string
             else if (validatedParams.secretKey.match(/^[0-9a-fA-F]+$/)) {
               const secretKeyBytes = Buffer.from(validatedParams.secretKey, 'hex');
-              return Keypair.fromSecretKey(secretKeyBytes);
+              return importKeyPair(secretKeyBytes);
             }
             else {
               throw new ValidationError('Invalid secret key string format. Expected comma-separated numbers or hex string');
@@ -89,21 +90,21 @@ function executeImportKeypair(params: ImportKeypairParams) {
           const keyData = JSON.parse(validatedParams.json);
           if (Array.isArray(keyData)) {
             // Array format
-            return Keypair.fromSecretKey(Uint8Array.from(keyData));
+            return importKeyPair(Uint8Array.from(keyData));
           } else if (keyData && keyData.secretKey) {
             // Object format with secretKey property
             if (Array.isArray(keyData.secretKey)) {
-              return Keypair.fromSecretKey(Uint8Array.from(keyData.secretKey));
+              return importKeyPair(Uint8Array.from(keyData.secretKey));
             } else if (typeof keyData.secretKey === 'string') {
               try {
                 // Try to parse as JSON array
                 const parsedSecretKey = JSON.parse(keyData.secretKey);
-                return Keypair.fromSecretKey(Uint8Array.from(parsedSecretKey));
+                return importKeyPair(Uint8Array.from(parsedSecretKey));
               } catch {
                 // Not JSON, try as hex string
                 if (keyData.secretKey.match(/^[0-9a-fA-F]+$/)) {
                   const secretKeyBytes = Buffer.from(keyData.secretKey, 'hex');
-                  return Keypair.fromSecretKey(secretKeyBytes);
+                  return importKeyPair(secretKeyBytes);
                 } else {
                   throw new ValidationError(
                     'Unable to parse secret key from JSON. Format not recognized.'

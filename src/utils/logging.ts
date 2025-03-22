@@ -302,26 +302,31 @@ export class Logger {
   }
 
   debug(message: string, data?: any): void {
-    this.log(LogLevel.DEBUG, message, data);
+    this.logMessage(LogLevel.DEBUG, message, data);
   }
 
   info(message: string, data?: any): void {
-    this.log(LogLevel.INFO, message, data);
+    this.logMessage(LogLevel.INFO, message, data);
   }
 
   warn(message: string, data?: any, error?: Error): void {
-    this.log(LogLevel.WARN, message, data, error);
+    this.logMessage(LogLevel.WARN, message, data, error);
   }
 
   error(message: string, data?: any, error?: Error): void {
-    this.log(LogLevel.ERROR, message, data, error);
+    this.logMessage(LogLevel.ERROR, message, data, error);
   }
 
   fatal(message: string, data?: any, error?: Error): void {
-    this.log(LogLevel.FATAL, message, data, error);
+    this.logMessage(LogLevel.FATAL, message, data, error);
+  }
+  
+  // Make this public so it can be used by other classes
+  log(level: LogLevel, message: string, data?: any, error?: Error): void {
+    this.logMessage(level, message, data, error);
   }
 
-  private log(level: LogLevel, message: string, data?: any, error?: Error): void {
+  private logMessage(level: LogLevel, message: string, data?: any, error?: Error): void {
     // Skip if the log level is below the configured minimum
     if (level < currentConfig.minLevel) {
       return;
@@ -484,16 +489,24 @@ export function logTime<T>(
     if (result instanceof Promise) {
       return result.finally(() => {
         const elapsed = Date.now() - start;
-        logger.log(level, `${operation} completed in ${elapsed}ms`);
+        if (level === LogLevel.DEBUG) logger.debug(`${operation} completed in ${elapsed}ms`);
+        else if (level === LogLevel.INFO) logger.info(`${operation} completed in ${elapsed}ms`);
+        else if (level === LogLevel.WARN) logger.warn(`${operation} completed in ${elapsed}ms`);
+        else if (level === LogLevel.ERROR) logger.error(`${operation} completed in ${elapsed}ms`);
+        else if (level === LogLevel.FATAL) logger.fatal(`${operation} completed in ${elapsed}ms`);
       });
     } else {
       const elapsed = Date.now() - start;
-      logger.log(level, `${operation} completed in ${elapsed}ms`);
+      if (level === LogLevel.DEBUG) logger.debug(`${operation} completed in ${elapsed}ms`);
+      else if (level === LogLevel.INFO) logger.info(`${operation} completed in ${elapsed}ms`);
+      else if (level === LogLevel.WARN) logger.warn(`${operation} completed in ${elapsed}ms`);
+      else if (level === LogLevel.ERROR) logger.error(`${operation} completed in ${elapsed}ms`);
+      else if (level === LogLevel.FATAL) logger.fatal(`${operation} completed in ${elapsed}ms`);
       return Promise.resolve(result);
     }
   } catch (error) {
     const elapsed = Date.now() - start;
-    logger.log(level, `${operation} failed after ${elapsed}ms`, {}, error instanceof Error ? error : new Error(String(error)));
+    logger.error(`${operation} failed after ${elapsed}ms`, {}, error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }

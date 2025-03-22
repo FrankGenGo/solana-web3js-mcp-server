@@ -6,7 +6,8 @@
  * optionally derive keypairs from seeds.
  */
 
-import { Keypair } from "@solana/web3.js";
+import { generateKeyPair } from "@solana/web3.js";
+import type { KeyPair } from "@solana/web3.js";
 import { getLogger } from "../../utils/logging.js";
 import { PublicKeyError, ValidationError, tryCatch } from "../../utils/errors.js";
 
@@ -105,7 +106,7 @@ export const generateKeypairTool = {
     // Generate the keypair, handling any errors
     return tryCatch(async () => {
       // Create the keypair, either from a seed or randomly
-      let keypair: Keypair;
+      let keypair: KeyPair;
       
       if (params.seed) {
         // Create a keypair from the provided seed
@@ -129,7 +130,8 @@ export const generateKeypairTool = {
             seedBytes = new Uint8Array(hashBuffer);
           }
           
-          keypair = Keypair.fromSeed(seedBytes);
+          // In web3.js v2.0, we use the seed directly with generateKeyPair
+          keypair = generateKeyPair({ seed: seedBytes });
           logger.debug("Generated keypair from seed");
         } catch (error) {
           logger.error("Failed to generate keypair from seed", error);
@@ -141,7 +143,7 @@ export const generateKeypairTool = {
         }
       } else {
         // Generate a random keypair
-        keypair = Keypair.generate();
+        keypair = generateKeyPair();
         logger.debug("Generated random keypair");
       }
       

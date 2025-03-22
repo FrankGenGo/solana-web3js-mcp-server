@@ -9,38 +9,41 @@ This document outlines the next steps for the Solana-web3js MCP server project f
   - Basic tools (Phase 2)
   - Program deployment tools (Phase 3)
   - Token operations tools (Phase 3)
+  - Web3.js v2.0 Migration (Partial - In Progress)
+    - Created migration branch
+    - Updated dependencies
+    - Migrated connection-manager.ts
+    - Migrated key tools (generate.ts, import.ts)
+    - Updated types/solana.ts
+    - Migrated program address tools
 
-- **Current TypeScript Errors**: 129 errors across 22 files
-  - These errors are primarily related to compatibility with the current version of @solana/web3.js
-  - Most errors will be addressed during the Web3.js v2.0 migration
+- **Current TypeScript Errors**: Remaining errors in files not yet migrated to web3.js v2.0
+  - These errors are primarily related to compatibility with web3.js v2.0
+  - Errors are being addressed file by file as we progress through the migration plan
 
 ## Immediate Next Steps
 
-### 1. Web3.js v2.0 Migration (Priority)
+### 1. Continue Web3.js v2.0 Migration (Priority)
 
-Follow the detailed migration plan in `migration_plan.md`:
+The migration has been started, and several key components have been updated. Continue following the detailed migration plan in `migration_plan.md`:
 
-1. **Create Migration Branch**
-   ```bash
-   git checkout -b feature/web3js-v2-migration
-   ```
+1. **Complete Tool Migration in This Order**:
+   - Account Management Tools
+     - Update `/src/tools/accounts/index.ts` and related files
+   - Transaction Tools
+     - Update transaction creation, signing, and sending functionality
+     - Focus on adapting to the functional message composition pattern
+   - Program Tools
+     - Update program deployment and upgrade logic
+     - Migrate buffer utilities and loader utilities
 
-2. **Update Dependencies**
-   ```bash
-   npm install --save @solana/web3.js@latest
-   npm install --save @solana-program/system @solana-program/token @solana-program/associated-token
-   ```
+2. **Update Transport Layer**:
+   - Fix `/src/transport/stdio.ts` and `/src/transport/http.ts`
+   - Update MCP communication code to support v2.0 patterns
 
-3. **Follow Migration Phases**:
-   - Phase 1: Core Infrastructure (2-3 days)
-     - Update Error and Logging Utilities
-     - Update Transport Layer
-     - Update Entry Points
-   - Phase 2: Tool Migration - Key Management (1-2 days)
-   - Phase 3: Tool Migration - Account Management (1-2 days)
-   - Phase 4: Tool Migration - Transaction Tools (3-4 days)
-   - Phase 5: Tool Migration - Program Tools (4-5 days)
-   - Phase 6: Testing and Integration (2-3 days)
+3. **Update Entry Points**:
+   - Fix `/src/index.ts` and `/src/solana-server.ts`
+   - Update server initialization and registration logic
 
 ### 2. Implement Comprehensive Testing
 

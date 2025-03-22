@@ -8,7 +8,23 @@
  * - Connection lifecycle management
  */
 
-import { Connection, ConnectionConfig, Commitment } from '@solana/web3.js';
+import { 
+  createSolanaRpc,
+  createDefaultRpcTransport,
+  Commitment
+} from '@solana/web3.js';
+import { ConnectionError } from '../utils/errors.js';
+
+// Import the RPC client type
+// For web3.js v2.0, we're using the result of createSolanaRpc as our client type
+type SolanaRpcClient = ReturnType<typeof createSolanaRpc>;
+
+// Define options for v2.0 transport config
+interface SolanaRpcClientOptions {
+  commitment?: Commitment;
+  headers?: Record<string, string>;
+  timeout?: number;
+}
 
 // Default Solana cluster endpoints
 export const DEFAULT_CLUSTERS = {
@@ -21,29 +37,13 @@ export const DEFAULT_CLUSTERS = {
 // Cluster type definition - string literals for the standard clusters
 export type ClusterType = 'mainnet' | 'testnet' | 'devnet' | 'localnet' | string;
 
-// Connection options interface
+// Connection options interface updated for v2.0
 export interface ConnectionOptions {
   commitment?: Commitment;
-  confirmTransactionInitialTimeout?: number;
-  disableRetryOnRateLimit?: boolean;
   timeout?: number;
   maxRetries?: number;
-}
-
-// Connection error class - basic implementation 
-// This would likely be replaced with a more sophisticated error system
-export class ConnectionError extends Error {
-  public readonly cluster: string;
-  public readonly endpoint: string;
-  public readonly cause?: Error;
-
-  constructor(message: string, cluster: string, endpoint: string, cause?: Error) {
-    super(message);
-    this.name = 'ConnectionError';
-    this.cluster = cluster;
-    this.endpoint = endpoint;
-    this.cause = cause;
-  }
+  useRateLimiter?: boolean;
+  headers?: Record<string, string>;
 }
 
 /**
@@ -51,18 +51,18 @@ export class ConnectionError extends Error {
  */
 export class ConnectionManager {
   private static instance: ConnectionManager;
-  private connections: Map<string, Connection> = new Map();
+  private rpcClients: Map<string, SolanaRpcClient> = new Map();
   private customEndpoints: Map<string, string> = new Map();
-  private connectionOptions: Map<string, ConnectionConfig> = new Map();
+  private connectionOptions: Map<string, ConnectionOptions> = new Map();
   private lastUsed: Map<string, number> = new Map();
   private connectionAttempts: Map<string, number> = new Map();
   
   // Default connection options
   private defaultOptions: ConnectionOptions = {
     commitment: 'confirmed',
-    disableRetryOnRateLimit: false,
     timeout: 30000,
-    maxRetries: 3
+    maxRetries: 3,
+    useRateLimiter: true
   };
 
   // Private constructor to enforce singleton pattern
@@ -84,20 +84,20 @@ export class ConnectionManager {
   }
 
   /**
-   * Get a Connection instance for the specified cluster
+   * Get a SolanaRpcClient instance for the specified cluster
    * 
    * @param cluster - The cluster to connect to ('mainnet', 'testnet', 'devnet', 'localnet', or custom name)
-   * @param forceNew - Force creation of a new connection even if one exists
-   * @returns Connection instance
-   * @throws ConnectionError if connection cannot be established
+   * @param forceNew - Force creation of a new client even if one exists
+   * @returns SolanaRpcClient instance
+   * @throws ConnectionError if client cannot be established
    */
-  public getConnection(cluster: ClusterType, forceNew = false): Connection {
+  public getConnection(cluster: ClusterType, forceNew = false): SolanaRpcClient {
     // Update last used timestamp
     this.lastUsed.set(cluster, Date.now());
     
-    // If we already have a connection and don't need to force a new one, return it
-    if (!forceNew && this.connections.has(cluster)) {
-      return this.connections.get(cluster)!;
+    // If we already have a client and don't need to force a new one, return it
+    if (!forceNew && this.rpcClients.has(cluster)) {
+      return this.rpcClients.get(cluster)!;
     }
 
     try {
@@ -107,16 +107,17 @@ export class ConnectionManager {
       // Get connection options (or use defaults)
       const options = this.connectionOptions.get(cluster) || this.defaultOptions;
       
-      // Create a new connection
-      const connection = new Connection(endpoint, options);
+      // Create the RPC client (simplified for v2.0)
+      // In v2.0, commitment is passed as a parameter to individual RPC methods
+      const rpcClient = createSolanaRpc(endpoint);
       
-      // Cache the connection
-      this.connections.set(cluster, connection);
+      // Cache the client
+      this.rpcClients.set(cluster, rpcClient);
       
       // Reset connection attempts
       this.connectionAttempts.set(cluster, 0);
       
-      return connection;
+      return rpcClient;
     } catch (error) {
       // Increment connection attempts
       const attempts = (this.connectionAttempts.get(cluster) || 0) + 1;
@@ -127,7 +128,9 @@ export class ConnectionManager {
         `Failed to establish connection to ${cluster} cluster (attempt ${attempts})`,
         cluster,
         this.getEndpoint(cluster),
-        error instanceof Error ? error : undefined
+        {
+          cause: error instanceof Error ? error : new Error(String(error))
+        }
       );
     }
   }
@@ -170,8 +173,8 @@ export class ConnectionManager {
       });
     }
     
-    // Remove any existing connection so it will be recreated with the new endpoint
-    this.connections.delete(cluster);
+    // Remove any existing client so it will be recreated with the new endpoint
+    this.rpcClients.delete(cluster);
     
     return this;
   }
@@ -194,8 +197,8 @@ export class ConnectionManager {
       ...options
     });
     
-    // Remove existing connection so it will be recreated with new options
-    this.connections.delete(cluster);
+    // Remove existing client so it will be recreated with new options
+    this.rpcClients.delete(cluster);
     
     return this;
   }
@@ -212,86 +215,87 @@ export class ConnectionManager {
       ...options
     };
     
-    // Reset all connections to use new defaults
-    this.connections.clear();
+    // Reset all clients to use new defaults
+    this.rpcClients.clear();
     
     return this;
   }
 
   /**
-   * Check if a connection to the specified cluster exists in the cache
+   * Check if an RPC client for the specified cluster exists in the cache
    * 
    * @param cluster - The cluster name
-   * @returns True if a connection exists, false otherwise
+   * @returns True if a client exists, false otherwise
    */
   public hasConnection(cluster: ClusterType): boolean {
-    return this.connections.has(cluster);
+    return this.rpcClients.has(cluster);
   }
 
   /**
-   * Get all currently active connections
+   * Get all currently active RPC clients
    * 
-   * @returns Map of all connections
+   * @returns Map of all RPC clients
    */
-  public getAllConnections(): Map<string, Connection> {
-    return new Map(this.connections);
+  public getAllConnections(): Map<string, SolanaRpcClient> {
+    return new Map(this.rpcClients);
   }
 
   /**
-   * Reset a specific connection, forcing it to be recreated on next use
+   * Reset a specific RPC client, forcing it to be recreated on next use
    * 
    * @param cluster - The cluster name
    */
   public resetConnection(cluster: ClusterType): void {
-    this.connections.delete(cluster);
+    this.rpcClients.delete(cluster);
     this.connectionAttempts.delete(cluster);
   }
 
   /**
-   * Reset all connections, forcing them to be recreated on next use
+   * Reset all RPC clients, forcing them to be recreated on next use
    */
   public resetAllConnections(): void {
-    this.connections.clear();
+    this.rpcClients.clear();
     this.connectionAttempts.clear();
   }
 
   /**
-   * Test a connection to verify it's working
+   * Test an RPC client to verify it's working
    * 
    * @param cluster - The cluster to test
-   * @returns Promise resolving to true if connection is working, rejects with error otherwise
+   * @returns Promise resolving to true if client is working, rejects with error otherwise
    */
   public async testConnection(cluster: ClusterType): Promise<boolean> {
     try {
-      const connection = this.getConnection(cluster);
+      const rpcClient = this.getConnection(cluster);
       // Try to get a simple value to verify the connection works
-      await connection.getVersion();
+      const versionResponse = await rpcClient.getVersion().send();
+      // If we get here, the connection is working
       return true;
     } catch (error) {
-      // Reset the connection so it will be recreated on next attempt
+      // Reset the client so it will be recreated on next attempt
       this.resetConnection(cluster);
       throw new ConnectionError(
         `Connection test failed for ${cluster}`,
         cluster,
         this.getEndpoint(cluster),
-        error instanceof Error ? error : undefined
+        { cause: error instanceof Error ? error : new Error(String(error)) }
       );
     }
   }
 
   /**
-   * Close idle connections that haven't been used for the specified time
+   * Close idle RPC clients that haven't been used for the specified time
    * 
    * @param maxIdleTimeMs - Maximum idle time in milliseconds (default: 10 minutes)
-   * @returns Number of connections closed
+   * @returns Number of clients closed
    */
   public cleanupIdleConnections(maxIdleTimeMs = 10 * 60 * 1000): number {
     const now = Date.now();
     let closedCount = 0;
     
     for (const [cluster, lastUsedTime] of this.lastUsed.entries()) {
-      if (now - lastUsedTime > maxIdleTimeMs && this.connections.has(cluster)) {
-        this.connections.delete(cluster);
+      if (now - lastUsedTime > maxIdleTimeMs && this.rpcClients.has(cluster)) {
+        this.rpcClients.delete(cluster);
         closedCount++;
       }
     }
@@ -304,11 +308,10 @@ export class ConnectionManager {
    * This should be called when the application is shutting down
    */
   public async cleanup(): Promise<void> {
-    // Currently, the Connection class doesn't have a close/disconnect method
-    // This is a placeholder for future implementation if needed
+    // RPC clients don't require explicit cleanup
     
-    // Clear all cached connections
-    this.connections.clear();
+    // Clear all cached clients
+    this.rpcClients.clear();
     this.lastUsed.clear();
     this.connectionAttempts.clear();
   }

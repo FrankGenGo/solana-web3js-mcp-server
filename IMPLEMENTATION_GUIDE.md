@@ -143,30 +143,101 @@ This document provides detailed guidance for implementing the extended functiona
 
 ## Migration to Web3.js v2.0
 
+### Migration Patterns (Based on Implementation Experience)
+
+#### Connection Management
+```typescript
+// Old (v1.x)
+import { Connection } from '@solana/web3.js';
+const connection = new Connection(url, options);
+const result = await connection.getBalance(address);
+
+// New (v2.0)
+import { createSolanaRpc } from '@solana/web3.js';
+const rpcClient = createSolanaRpc(url);
+const result = await rpcClient.getBalance(address).send();
+```
+
+#### Key Generation and Management
+```typescript
+// Old (v1.x)
+import { Keypair } from '@solana/web3.js';
+const keypair = Keypair.generate();
+const fromSeed = Keypair.fromSeed(seedBytes);
+const fromSecret = Keypair.fromSecretKey(secretKeyBytes);
+
+// New (v2.0)
+import { generateKeyPair, importKeyPair } from '@solana/web3.js';
+const keypair = generateKeyPair();
+const fromSeed = generateKeyPair({ seed: seedBytes });
+const fromSecret = importKeyPair(secretKeyBytes);
+```
+
+#### Program Addresses
+```typescript
+// Old (v1.x)
+import { PublicKey } from '@solana/web3.js';
+const address = PublicKey.createProgramAddressSync(seeds, programId);
+const [pda, bump] = PublicKey.findProgramAddressSync(seeds, programId);
+
+// New (v2.0)
+import { createProgramAddress, findProgramAddress } from '@solana/web3.js';
+const address = createProgramAddress(seeds, programId);
+const [pda, bump] = findProgramAddress(seeds, programId);
+```
+
+#### Transactions (To Be Implemented)
+```typescript
+// Old (v1.x)
+import { Transaction } from '@solana/web3.js';
+const transaction = new Transaction();
+transaction.add(instruction);
+transaction.sign(keypair);
+
+// New (v2.0)
+import { 
+  createTransactionMessage, 
+  appendTransactionMessageInstructions,
+  signTransactionMessageWithSigners 
+} from '@solana/web3.js';
+let message = createTransactionMessage({});
+message = appendTransactionMessageInstructions([instruction], message);
+const signedTx = signTransactionMessageWithSigners(message, [keypair]);
+```
+
 ### Code Refactoring Strategy
 - Update imports to use functional API
 - Replace class-based API usage with functional equivalents
-- Update transaction creation flows
-- Adapt signing and verification logic
+- Add `.send()` at the end of RPC method calls
+- Update transaction creation flows to use the message composition pattern
+- Adapt signing and verification logic for the new message-based approach
 
-### TypeScript Updates
-- Fix type errors in existing codebase
-- Leverage enhanced TypeScript interfaces in v2.0
-- Update method signatures
-- Implement stricter type checks
+### Type System Updates
+- Replace `PublicKey` with `Address` type for most use cases
+- Update method signatures to match v2.0 patterns
+- Use explicit `import type` syntax for type-only imports
+- Define derived types using v2.0 base types
+- Use ReturnType utility for functional API result types
 
 ### Performance Optimization
 - Leverage native WebAssembly cryptographic operations
+- Take advantage of immutable data structures
+- Utilize tree-shaking capabilities through specific imports
 - Implement batch processing for related operations
-- Utilize tree-shaking capabilities
 - Reduce bundle size through module optimization
 
-## Implementation Priorities
+## Implementation Priorities (Updated 2025-03-22)
 
-1. **First Priority**: Complete Token Operations tools
-2. **Second Priority**: Implement Web3.js v2.0 migration
-3. **Third Priority**: Add comprehensive testing
-4. **Fourth Priority**: Implement extended RPC functionality
-5. **Fifth Priority**: Develop natural language interaction capabilities
+1. **Completed**: Token Operations tools
+2. **Current Priority**: Complete Web3.js v2.0 migration
+   - Focus on account tools and transaction tools next
+   - Update transport layer and entry points
+   - Finalize program deployment tools migration
+3. **Next Priority**: Add comprehensive testing
+   - Implement unit tests for migrated components
+   - Add integration tests for MCP functionality
+   - Create end-to-end tests for Solana operations
+4. **Future Priority**: Implement extended RPC functionality
+5. **Future Priority**: Develop natural language interaction capabilities
 
 Each phase should include documentation updates and example code to demonstrate usage.

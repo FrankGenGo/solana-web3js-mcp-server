@@ -8,36 +8,30 @@
  */
 
 import {
-  PublicKey,
-  Transaction,
-  TransactionSignature,
-  Connection,
   Blockhash,
   Commitment,
-  CompiledInstruction,
-  VersionedTransaction,
-  Keypair,
+  Signature as TransactionSignature,
+  Address,
+  TransactionMessage,
+  AddressLookupTableAccount,
+  TransactionVersion
+} from '@solana/web3.js';
+
+import type {
+  RpcClient as SolanaRpcClient,
   AccountInfo,
   AccountMeta,
-  Signer,
-  TransactionMessage,
-  Message,
-  SendOptions,
-  RpcResponseAndContext,
-  Context,
+  SimulatedTransactionResponse,
+  KeyPair as Keypair,
   MessageV0,
-  ConfirmedSignaturesForAddress2Options,
-  ConfirmedSignatureInfo,
-  GetVersionedTransactionConfig,
-  TransactionVersion,
-  AddressLookupTableAccount,
-  SimulatedTransactionResponse
+  VersionedTransaction,
+  Transaction
 } from '@solana/web3.js';
 
 /**
- * Solana account address represented as string or PublicKey
+ * Solana account address represented as string or Address
  */
-export type SolanaAddress = string | PublicKey;
+export type SolanaAddress = string | Address;
 
 /**
  * Types of networks/clusters available in Solana
@@ -77,9 +71,9 @@ export interface ClusterConfig {
  */
 export interface SolanaAccountData<T = any> {
   /** Account public key */
-  address: PublicKey;
+  address: Address;
   /** Account owner (program that owns this account) */
-  owner: PublicKey;
+  owner: Address;
   /** Lamports balance */
   lamports: number;
   /** Whether account is executable */
@@ -191,7 +185,7 @@ export interface TransactionCreationOptions {
   /** Last valid block height */
   lastValidBlockHeight?: number;
   /** Fee payer account */
-  feePayer?: PublicKey;
+  feePayer?: Address;
   /** Use legacy transaction format */
   useLegacyFormat?: boolean;
   /** Address lookup tables for versioned transactions */
@@ -203,17 +197,17 @@ export interface TransactionCreationOptions {
  */
 export interface TokenAccountInfo {
   /** Token account address */
-  address: PublicKey;
+  address: Address;
   /** Token mint address */
-  mint: PublicKey;
+  mint: Address;
   /** Token account owner */
-  owner: PublicKey;
+  owner: Address;
   /** Token amount */
   amount: bigint;
   /** Decimals for display purposes */
   decimals: number;
   /** Optional delegate info */
-  delegate?: PublicKey;
+  delegate?: Address;
   /** Optional delegated amount */
   delegatedAmount?: bigint;
   /** Whether account is frozen */
@@ -227,9 +221,9 @@ export interface TokenAccountInfo {
  */
 export interface TokenMintInfo {
   /** Mint address */
-  address: PublicKey;
+  address: Address;
   /** Token mint authority */
-  mintAuthority?: PublicKey;
+  mintAuthority?: Address;
   /** Token supply */
   supply: bigint;
   /** Token decimals */
@@ -237,7 +231,7 @@ export interface TokenMintInfo {
   /** Whether mint is initialized */
   isInitialized: boolean;
   /** Freeze authority */
-  freezeAuthority?: PublicKey;
+  freezeAuthority?: Address;
 }
 
 /**
@@ -245,7 +239,7 @@ export interface TokenMintInfo {
  */
 export interface DerivedAddressResult {
   /** Derived public key */
-  publicKey: PublicKey;
+  publicKey: Address;
   /** Bump seed value (if PDA) */
   bump?: number;
   /** Seeds used for derivation */

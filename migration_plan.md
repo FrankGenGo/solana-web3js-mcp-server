@@ -6,12 +6,25 @@ This document outlines the step-by-step plan for migrating the Solana-web3js MCP
 
 **Update (2025-03-22)**: All token operations tools have been implemented using the v1.x API. The next priority is to migrate the entire codebase to Web3.js v2.0 as outlined in this document.
 
-## Current Status
+## Current Status (Updated 2025-03-22)
 
-- Current version: @solana/web3.js v1.98.0 (specified as ^1.91.1 in package.json)
-- The codebase primarily uses v1.x class-based APIs
-- There are 129 TypeScript errors across 22 files
-- The errors are concentrated in program tools (52), transaction tools (37), account tools (10), and key management tools (11)
+- **Completed Migration Tasks**:
+  - Created migration branch `feature/web3js-v2-migration`
+  - Updated dependencies to @solana/web3.js v2.0.0
+  - Migrated `/src/core/connection-manager.ts` to use functional RPC client patterns
+  - Migrated `/src/types/solana.ts` to use v2.0 types and interfaces
+  - Migrated key management tools:
+    - `/src/tools/keys/generate.ts` - Updated to use `generateKeyPair()`
+    - `/src/tools/keys/import.ts` - Updated to use `importKeyPair()`
+  - Migrated program address tools:
+    - `/src/tools/programs/address.ts` - Updated to use `createProgramAddress()` and `findProgramAddress()`
+
+- **Pending Migration Tasks**:
+  - The remaining TypeScript errors need to be fixed
+  - Account management tools need to be migrated
+  - Transaction tools need to be migrated to use the new message composition pattern
+  - Program deployment tools need to be updated
+  - Entry points and transport layers need to be fixed
 
 ## Migration Benefits
 

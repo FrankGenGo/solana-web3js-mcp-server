@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server that enables AI assistants like Claude to develop and deploy Solana smart contracts end-to-end. This server acts as a bridge between AI language models and the Solana blockchain, providing a standardized interface for blockchain interactions.
 
+> **Important Update**: This project is currently being migrated from Solana web3.js v1.x to v2.0 to take advantage of improved performance, better type safety, and modern functional programming patterns. See the [migration plan](/migration_plan.md) for details.
+
 ## What is MCP?
 
 The [Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that allows AI assistants to access external tools and data sources in a secure, controlled manner. This server implements the MCP specification to expose Solana blockchain functionality to AI assistants.
@@ -105,10 +107,12 @@ npm start
 - `upgradeProgram`: Upgrade an existing upgradeable program
 - `generateProgramAddress`: Derive a program derived address (PDA)
 
-### Token Operations (Coming Soon)
+### Token Operations (Implemented)
 - `createToken`: Create a new SPL token
 - `mintTokens`: Mint tokens to a token account
 - `transferTokens`: Transfer tokens between accounts
+- `getTokenAccountInfo`: Get token account information
+- `getTokenSupply`: Get the total supply of a token
 
 ## Development
 

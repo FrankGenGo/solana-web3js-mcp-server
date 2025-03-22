@@ -9,10 +9,10 @@
  */
 
 import { getLogger } from './logging.js';
+// Import error utilities from web3.js v2.0
 import { 
-  SendTransactionError, 
-  TransactionError as SolanaTransactionError,
-  PublicKeyError as SolanaPublicKeyError,
+  SolanaError,
+  TransactionError as SolanaTransactionError
 } from '@solana/web3.js';
 
 // Error codes by category for consistent error identification
@@ -414,33 +414,58 @@ export class McpError extends SolanaServerError {
  * Wraps a Solana Web3.js error into the appropriate system error
  */
 export function wrapSolanaError(error: Error): SolanaServerError {
-  // Handle SendTransactionError
-  if (error instanceof SendTransactionError) {
-    return new TransactionError(
-      `Transaction send failed: ${error.message}`,
+  // Check if the error is a Solana error from web3.js v2.0
+  if (error instanceof SolanaError) {
+    // Handle Transaction errors
+    if (error instanceof SolanaTransactionError) {
+      return new TransactionError(
+        `Transaction error: ${error.message}`,
+        undefined,
+        { cause: error, code: ErrorCode.TRANSACTION_ERROR }
+      );
+    }
+    
+    // For other Solana errors, extract useful information if available
+    const details: Record<string, any> = {};
+    
+    // Determine the error type based on name and message pattern
+    const errorName = error.name.toLowerCase();
+    const errorMessage = error.message.toLowerCase();
+    
+    if (errorMessage.includes('program') || errorName.includes('program')) {
+      return new ProgramError(
+        `Program error: ${error.message}`,
+        undefined,
+        undefined,
+        { cause: error, code: ErrorCode.PROGRAM_EXECUTION_FAILED }
+      );
+    }
+    
+    if (errorMessage.includes('signature') || errorName.includes('signature')) {
+      return new TransactionError(
+        `Signature verification failed: ${error.message}`,
+        undefined,
+        { cause: error, code: ErrorCode.SIGNATURE_VERIFICATION_FAILED }
+      );
+    }
+    
+    // Extract any additional properties for details
+    for (const key in error) {
+      // Skip standard Error properties
+      if (['name', 'message', 'stack'].includes(key)) continue;
+      // @ts-ignore - We're safely extracting properties
+      details[key] = error[key];
+    }
+    
+    return new ConnectionError(
+      `Solana error: ${error.message}`,
+      undefined,
       undefined,
       {
         cause: error,
-        code: ErrorCode.TRANSACTION_REJECTED,
-        details: { logs: error.logs }
+        code: ErrorCode.CONNECTION_ERROR,
+        details: Object.keys(details).length ? details : undefined
       }
-    );
-  }
-  
-  // Handle SolanaTransactionError
-  if (error instanceof SolanaTransactionError) {
-    return new TransactionError(
-      `Transaction error: ${error.message}`,
-      undefined,
-      { cause: error, code: ErrorCode.TRANSACTION_ERROR }
-    );
-  }
-  
-  // Handle SolanaPublicKeyError
-  if (error instanceof SolanaPublicKeyError) {
-    return new PublicKeyError(
-      `Public key error: ${error.message}`,
-      { cause: error, code: ErrorCode.INVALID_PUBKEY }
     );
   }
   
