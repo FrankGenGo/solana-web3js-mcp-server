@@ -205,23 +205,45 @@ const programAccounts = await rpcClient.getProgramAccounts(programId).send();
 const rentExemption = await rpcClient.getMinimumBalanceForRentExemption(size).send();
 ```
 
-#### Transactions (To Be Implemented)
+#### Transactions
 ```typescript
 // Old (v1.x)
-import { Transaction } from '@solana/web3.js';
+import { Transaction, Connection } from '@solana/web3.js';
 const transaction = new Transaction();
 transaction.add(instruction);
 transaction.sign(keypair);
+const signature = await connection.sendTransaction(transaction);
+const status = await connection.getSignatureStatus(signature);
+const simulation = await connection.simulateTransaction(transaction);
 
 // New (v2.0)
 import { 
   createTransactionMessage, 
   appendTransactionMessageInstructions,
-  signTransactionMessageWithSigners 
+  signTransactionWithSigners,
+  createSolanaRpc,
+  sendTransactionFactory,
+  getSignatureStatusesFactory,
+  simulateTransactionFactory
 } from '@solana/web3.js';
+
+// Create and sign transaction
 let message = createTransactionMessage({});
 message = appendTransactionMessageInstructions([instruction], message);
-const signedTx = signTransactionMessageWithSigners(message, [keypair]);
+const signedTx = signTransactionWithSigners(message, [keypair]);
+
+// Send transaction
+const rpcClient = createSolanaRpc(url);
+const sendTransaction = sendTransactionFactory(rpcClient);
+const signature = await sendTransaction(signedTx).send();
+
+// Get status
+const getSignatureStatuses = getSignatureStatusesFactory(rpcClient);
+const status = await getSignatureStatuses([signature]).send();
+
+// Simulate transaction
+const simulateTransaction = simulateTransactionFactory(rpcClient);
+const simulation = await simulateTransaction(signedTx).send();
 ```
 
 ### Code Refactoring Strategy
@@ -247,11 +269,16 @@ const signedTx = signTransactionMessageWithSigners(message, [keypair]);
 
 ## Implementation Priorities (Updated 2025-03-22)
 
-1. **Completed**: Token Operations tools
+1. **Completed**: 
+   - Token Operations tools
+   - Web3.js v2.0 migration for:
+     - Connection Manager (core)
+     - Key Management tools
+     - Account Management tools
+     - Transaction tools
 2. **Current Priority**: Complete Web3.js v2.0 migration
-   - Focus on account tools and transaction tools next
+   - Focus on program deployment tools next
    - Update transport layer and entry points
-   - Finalize program deployment tools migration
 3. **Next Priority**: Add comprehensive testing
    - Implement unit tests for migrated components
    - Add integration tests for MCP functionality

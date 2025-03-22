@@ -6,26 +6,28 @@
  * level, containing block, and any errors encountered during processing.
  */
 
+import {
+  getTransactionFactory,
+  getSignatureStatusesFactory
+} from '@solana/web3.js';
+
+import type {
+  Finality,
+  Address,
+  TransactionSignature,
+  TransactionError as SolanaTransactionError
+} from '@solana/web3.js';
+
+import { getLogger } from '../../utils/logging.js';
 import { 
-  Connection, 
-  TransactionSignature, 
   TransactionError, 
-  TransactionConfirmationStatus,
-  PublicKey, 
-  Finality, 
-  VersionedTransactionResponse,
-  InstructionError
-} from "@solana/web3.js";
-import { getLogger } from "../../utils/logging.js";
-import { 
-  TransactionError as TransactionErrorType, 
   ErrorCode, 
   tryCatch 
-} from "../../utils/errors.js";
-import { ConnectionManager } from "../../core/connection-manager.js";
+} from '../../utils/errors.js';
+import { ConnectionManager } from '../../core/connection-manager.js';
 
 // Logger for this module
-const logger = getLogger("transaction-status-tool");
+const logger = getLogger('transaction-status-tool');
 
 // Tool parameter definition
 export interface GetTransactionStatusParams {
@@ -45,6 +47,9 @@ export interface GetTransactionStatusParams {
   checkPending?: boolean;
 }
 
+// Transaction status types
+export type TransactionConfirmationStatus = 'processed' | 'confirmed' | 'finalized' | null;
+
 // Transaction status result
 export interface TransactionStatusResult {
   // The signature that was checked
@@ -54,7 +59,7 @@ export interface TransactionStatusResult {
   status: string;
   
   // Confirmation status from Solana if available
-  confirmationStatus?: TransactionConfirmationStatus | null;
+  confirmationStatus?: TransactionConfirmationStatus;
   
   // The slot in which the transaction was included (if confirmed)
   slot?: number;
@@ -111,39 +116,39 @@ export interface TransactionStatusResult {
  * @returns Object containing the transaction status information
  */
 export const getTransactionStatusTool = {
-  name: "getTransactionStatus",
-  description: "Checks the status and confirmation of a Solana transaction by its signature",
+  name: 'getTransactionStatus',
+  description: 'Checks the status and confirmation of a Solana transaction by its signature',
   
   parameters: {
-    type: "object",
+    type: 'object',
     properties: {
       signature: {
-        type: "string",
-        description: "Transaction signature to check",
+        type: 'string',
+        description: 'Transaction signature to check',
       },
       cluster: {
-        type: "string",
-        description: "The Solana cluster to connect to (mainnet, testnet, devnet, localnet, or custom name)",
-        default: "mainnet",
+        type: 'string',
+        description: 'The Solana cluster to connect to (mainnet, testnet, devnet, localnet, or custom name)',
+        default: 'mainnet',
       },
       includeDetails: {
-        type: "boolean",
-        description: "Whether to include detailed transaction information if available",
+        type: 'boolean',
+        description: 'Whether to include detailed transaction information if available',
         default: false,
       },
       commitment: {
-        type: "string",
-        enum: ["processed", "confirmed", "finalized"],
-        description: "Commitment level to check against",
-        default: "finalized",
+        type: 'string',
+        enum: ['processed', 'confirmed', 'finalized'],
+        description: 'Commitment level to check against',
+        default: 'finalized',
       },
       checkPending: {
-        type: "boolean",
-        description: "Whether to check if transaction is still pending if not found",
+        type: 'boolean',
+        description: 'Whether to check if transaction is still pending if not found',
         default: true,
       },
     },
-    required: ["signature"],
+    required: ['signature'],
     additionalProperties: false,
   },
   
@@ -153,13 +158,13 @@ export const getTransactionStatusTool = {
   ): Promise<TransactionStatusResult> => {
     const { 
       signature, 
-      cluster = "mainnet", 
+      cluster = 'mainnet', 
       includeDetails = false, 
-      commitment = "finalized", 
+      commitment = 'finalized', 
       checkPending = true 
     } = params;
     
-    logger.info("Checking transaction status", { 
+    logger.info('Checking transaction status', { 
       signature, 
       cluster, 
       commitment, 
@@ -170,77 +175,83 @@ export const getTransactionStatusTool = {
     return tryCatch(async () => {
       // Validate signature format
       if (!signature || !/^[0-9a-zA-Z]{87,88}$/.test(signature)) {
-        throw new TransactionErrorType(
-          "Invalid transaction signature format", 
+        throw new TransactionError(
+          'Invalid transaction signature format', 
           signature, 
           { code: ErrorCode.VALIDATION_FAILED }
         );
       }
       
-      // Get connection from the connection manager
-      const connection: Connection = connectionManager.getConnection(cluster);
+      // Get RPC client from the connection manager
+      const rpcClient = connectionManager.getConnection(cluster);
       
       // Initialize the result object
       const result: TransactionStatusResult = {
         signature,
-        status: "not_found"
+        status: 'not_found'
       };
       
       try {
-        // First check the signature status
-        const signatureStatuses = await connection.getSignatureStatuses([signature]);
+        // First check the signature status - we use factory function to get the function
+        const getSignatureStatuses = getSignatureStatusesFactory(rpcClient);
+        
+        // Then call .send() to execute the RPC call
+        const signatureStatuses = await getSignatureStatuses([signature]).send();
         const signatureStatus = signatureStatuses?.value[0];
         
         if (signatureStatus) {
           // Transaction found in status lookup
-          result.confirmationStatus = signatureStatus.confirmationStatus;
+          result.confirmationStatus = signatureStatus.confirmationStatus || null;
           result.slot = signatureStatus.slot;
           
           // Determine the high-level status
           if (signatureStatus.err) {
-            result.status = "failed";
+            result.status = 'failed';
             result.error = {
-              message: "Transaction failed"
+              message: 'Transaction failed'
             };
             
             // Parse error details if available
-            if (typeof signatureStatus.err === "object") {
-              const error = signatureStatus.err as TransactionError;
+            if (typeof signatureStatus.err === 'object') {
+              const error = signatureStatus.err as SolanaTransactionError;
               parseTransactionError(error, result);
             } else {
               result.error.message = `Transaction failed: ${signatureStatus.err}`;
             }
-          } else if (signatureStatus.confirmationStatus === "finalized") {
-            result.status = "finalized";
-          } else if (signatureStatus.confirmationStatus === "confirmed") {
-            result.status = "confirmed";
+          } else if (signatureStatus.confirmationStatus === 'finalized') {
+            result.status = 'finalized';
+          } else if (signatureStatus.confirmationStatus === 'confirmed') {
+            result.status = 'confirmed';
           } else {
-            result.status = "processed";
+            result.status = 'processed';
           }
           
           // If details are requested or we need to parse errors further, get full transaction info
-          if (includeDetails || result.status === "failed") {
-            await fetchTransactionDetails(connection, signature, result);
+          if (includeDetails || result.status === 'failed') {
+            await fetchTransactionDetails(rpcClient, signature, result, commitment);
           }
         } else if (checkPending) {
           // Check if the transaction is pending (in the mempool but not yet processed)
           try {
-            // Try to get pending transaction to see if it's in the mempool
-            const pendingTxs = await connection.getParsedTransactions([signature], {
-              maxSupportedTransactionVersion: 0,
-              commitment: "processed"
-            });
+            // Create getTransaction function using factory
+            const getTransaction = getTransactionFactory(rpcClient);
             
-            if (pendingTxs[0]) {
-              result.status = "pending";
+            // Check with 'processed' commitment to catch pending transactions
+            const transaction = await getTransaction(signature, {
+              maxSupportedTransactionVersion: 0,
+              commitment: 'processed'
+            }).send();
+            
+            if (transaction) {
+              result.status = 'pending';
             }
           } catch (error) {
             // If error, transaction may not exist or RPC doesn't support pending lookups
-            logger.debug("Failed to check for pending transaction", error);
+            logger.debug('Failed to check for pending transaction', error);
           }
         }
         
-        logger.info("Transaction status check completed", { 
+        logger.info('Transaction status check completed', { 
           signature, 
           status: result.status, 
           confirmationStatus: result.confirmationStatus, 
@@ -251,10 +262,10 @@ export const getTransactionStatusTool = {
       } catch (error) {
         // Special handling for "not found" vs. other errors
         if (error instanceof Error && 
-            error.message.includes("not found") || 
-            error.message.includes("could not find")) {
+            (error.message.includes('not found') || 
+             error.message.includes('could not find'))) {
           // This is expected for transactions that don't exist
-          logger.debug("Transaction not found", { signature });
+          logger.debug('Transaction not found', { signature });
           return result;
         }
         
@@ -262,7 +273,7 @@ export const getTransactionStatusTool = {
         throw error;
       }
     }, 
-    (error) => new TransactionErrorType(
+    (error) => new TransactionError(
       `Failed to check transaction status: ${error.message}`, 
       signature, 
       { cause: error }
@@ -273,21 +284,26 @@ export const getTransactionStatusTool = {
 /**
  * Fetches detailed transaction information and updates the result object
  * 
- * @param connection - Solana connection object
+ * @param rpcClient - Solana RPC client
  * @param signature - Transaction signature
  * @param result - Result object to update
+ * @param commitment - Commitment level to use
  */
 async function fetchTransactionDetails(
-  connection: Connection, 
+  rpcClient: any, 
   signature: string, 
-  result: TransactionStatusResult
+  result: TransactionStatusResult,
+  commitment: Finality
 ): Promise<void> {
   try {
-    // Get the full transaction data
-    const transaction = await connection.getTransaction(signature, {
+    // Create getTransaction function using factory
+    const getTransaction = getTransactionFactory(rpcClient);
+    
+    // Get the full transaction data with .send()
+    const transaction = await getTransaction(signature, {
       maxSupportedTransactionVersion: 0,
-      commitment: 'confirmed'
-    });
+      commitment
+    }).send();
     
     if (!transaction) {
       return;
@@ -299,34 +315,31 @@ async function fetchTransactionDetails(
     }
     
     // If we have a failed transaction with a returned error, parse it
-    if (result.status === "failed" && transaction.meta?.err) {
+    if (result.status === 'failed' && transaction.meta?.err) {
       parseTransactionError(transaction.meta.err, result);
     }
     
     // Add detailed information if requested
-    if (result.details || !result.details) {
-      result.details = {
-        fee: transaction.meta?.fee,
-        accounts: transaction.transaction.message.accountKeys.map(key => 
-          typeof key === 'string' ? key : key.toString()
-        ),
-        instructionCount: transaction.transaction.message.instructions.length,
-        recentBlockhash: transaction.transaction.message.recentBlockhash,
-        logs: transaction.meta?.logMessages,
-      };
-      
-      // Check if the transaction includes compute budget instructions
-      result.details.hasComputeBudget = transaction.transaction.message.instructions.some(ix => {
-        const programId = 
-          typeof ix.programId === 'string' ? 
-          ix.programId : 
-          ix.programId.toString();
-          
-        return programId === 'ComputeBudget111111111111111111111111111111';
-      });
-    }
+    result.details = {
+      fee: transaction.meta?.fee,
+      accounts: transaction.transaction.message.getAccountKeys().map(key => 
+        key.toString()
+      ),
+      instructionCount: transaction.transaction.message.compiledInstructions.length,
+      recentBlockhash: transaction.transaction.message.recentBlockhash,
+      logs: transaction.meta?.logMessages,
+    };
+    
+    // Check if the transaction includes compute budget instructions
+    const accounts = transaction.transaction.message.getAccountKeys();
+    const computeBudgetProgramId = 'ComputeBudget111111111111111111111111111111';
+    result.details.hasComputeBudget = transaction.transaction.message.compiledInstructions.some(ix => {
+      const programIdIndex = ix.programIdIndex;
+      const programId = accounts[programIdIndex].toString();
+      return programId === computeBudgetProgramId;
+    });
   } catch (error) {
-    logger.warn("Failed to fetch transaction details", { signature, error });
+    logger.warn('Failed to fetch transaction details', { signature, error });
     // Don't throw, just continue without details
   }
 }
@@ -338,51 +351,57 @@ async function fetchTransactionDetails(
  * @param result - Result object to update
  */
 function parseTransactionError(
-  error: TransactionError, 
+  error: SolanaTransactionError, 
   result: TransactionStatusResult
 ): void {
   if (!result.error) {
-    result.error = { message: "Transaction failed" };
+    result.error = { message: 'Transaction failed' };
   }
   
   if (error === null) {
     return;
   }
   
-  // Parse InstructionError
-  if ('InstructionError' in error) {
-    const [instructionIndex, instructionError] = error.InstructionError;
-    result.error.instructionIndex = instructionIndex;
-    
-    if (typeof instructionError === 'string') {
-      result.error.message = `Instruction ${instructionIndex} failed: ${instructionError}`;
-    } else if (instructionError && typeof instructionError === 'object') {
-      let errorCode: string | null = null;
-      let customError: number | null = null;
+  try {
+    // Parse InstructionError
+    if ('InstructionError' in error) {
+      const [instructionIndex, instructionError] = error.InstructionError;
+      result.error.instructionIndex = instructionIndex;
       
-      // Extract error code from the error object
-      for (const [key, value] of Object.entries(instructionError)) {
-        if (key === 'Custom' && typeof value === 'number') {
-          customError = value;
-        } else {
-          errorCode = key;
+      if (typeof instructionError === 'string') {
+        result.error.message = `Instruction ${instructionIndex} failed: ${instructionError}`;
+      } else if (instructionError && typeof instructionError === 'object') {
+        let errorCode: string | null = null;
+        let customError: number | null = null;
+        
+        // Extract error code from the error object
+        for (const [key, value] of Object.entries(instructionError)) {
+          if (key === 'Custom' && typeof value === 'number') {
+            customError = value;
+          } else {
+            errorCode = key;
+          }
+        }
+        
+        // Set appropriate error message
+        if (customError !== null) {
+          result.error.message = `Instruction ${instructionIndex} failed with custom program error: ${customError}`;
+          result.error.code = customError;
+          result.error.details = { customProgramError: customError };
+        } else if (errorCode) {
+          result.error.message = `Instruction ${instructionIndex} failed: ${errorCode}`;
+          result.error.details = { errorCode };
         }
       }
-      
-      // Set appropriate error message
-      if (customError !== null) {
-        result.error.message = `Instruction ${instructionIndex} failed with custom program error: ${customError}`;
-        result.error.code = customError;
-        result.error.details = { customProgramError: customError };
-      } else if (errorCode) {
-        result.error.message = `Instruction ${instructionIndex} failed: ${errorCode}`;
-        result.error.details = { errorCode };
-      }
+    } else {
+      // Handle other error types
+      const errorString = JSON.stringify(error);
+      result.error.message = `Transaction failed: ${errorString}`;
+      result.error.details = error;
     }
-  } else {
-    // Handle other error types
-    const errorString = JSON.stringify(error);
-    result.error.message = `Transaction failed: ${errorString}`;
-    result.error.details = error;
+  } catch (err) {
+    // If there's any error in parsing, just set a generic message
+    result.error.message = `Transaction failed: ${JSON.stringify(error)}`;
+    result.error.details = { error };
   }
 }

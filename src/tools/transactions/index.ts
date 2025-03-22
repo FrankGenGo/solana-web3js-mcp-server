@@ -3,6 +3,8 @@
  * 
  * This module exports functions to register transaction-related tools with the MCP server.
  * These tools provide functionality for creating, signing, sending, simulating, and checking status of Solana transactions.
+ * 
+ * Updated for web3.js v2.0 with functional API patterns.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -53,9 +55,10 @@ export function registerTransactionTools(
   }
 }
 
-// Export individual tools
+// Export individual tools with web3.js v2.0 implementations
 export { createTransactionTool } from "./create.js";
 export { signTransactionTool } from "./sign.js";
 export { sendTransactionTool } from "./send.js";
 export { simulateTransactionTool } from "./simulate.js";
 export { getTransactionStatusTool } from "./status.js";
+export { TransactionFormat } from "./send.js";

@@ -7,14 +7,19 @@
  */
 
 import { 
-  Transaction, 
-  VersionedTransaction, 
-  TransactionMessage,
-  Message,
-  PublicKey, 
-  Keypair,
-  VersionedMessage
+  signTransactionWithSigners, 
+  importKeyPair,
+  getTransactionMessage,
+  getTransactionSigners,
+  deserializeTransaction
 } from '@solana/web3.js';
+
+import type { 
+  Address, 
+  KeyPair, 
+  Transaction
+} from '@solana/web3.js';
+
 import { getLogger } from '../../utils/logging.js';
 import { ValidationError, PublicKeyError, TransactionError, tryCatchSync } from '../../utils/errors.js';
 import { z } from 'zod';
@@ -157,29 +162,17 @@ export const signTransactionTool = {
       
       // Deserialize the transaction
       const transactionBuffer = Buffer.from(validatedParams.transaction, 'base64');
-      let transaction: Transaction | VersionedTransaction;
-      let isVersioned = false;
+      let transaction: Transaction;
       
       try {
-        // First try as versioned transaction
-        transaction = VersionedTransaction.deserialize(transactionBuffer);
-        isVersioned = true;
+        transaction = deserializeTransaction(transactionBuffer);
       } catch (error) {
-        // If that fails, try as legacy transaction
-        try {
-          transaction = Transaction.from(transactionBuffer);
-        } catch (innerError) {
-          logger.error('Failed to deserialize transaction', {
-            originalError: error,
-            legacyError: innerError,
-          });
-          
-          throw new ValidationError(
-            'Invalid transaction format. Could not deserialize as either versioned or legacy transaction.',
-            'transaction',
-            { cause: innerError }
-          );
-        }
+        logger.error('Failed to deserialize transaction', { error });
+        throw new ValidationError(
+          'Invalid transaction format. Could not deserialize transaction.',
+          'transaction',
+          { cause: error }
+        );
       }
       
       // Convert signers to Keypair objects
@@ -196,13 +189,70 @@ export const signTransactionTool = {
         }
       });
       
+      // Get transaction message to analyze required signers
+      const message = getTransactionMessage(transaction);
+      
+      // Get the required signers for the transaction
+      const requiredSigners = getTransactionSigners(transaction);
+      
+      // Track signatures that already exist in the transaction
+      const alreadySignedKeys = new Set<string>();
+      const signerKeyToIndex = new Map<string, number>();
+      
+      // Map required signers to their public key strings for easy lookup
+      requiredSigners.forEach((pubkey, index) => {
+        const pubkeyStr = pubkey.toString();
+        signerKeyToIndex.set(pubkeyStr, index);
+      });
+      
+      // Check for existing signatures (ones that are not null or all zeros)
+      const existingSignatures = transaction.signatures || [];
+      existingSignatures.forEach((sig, index) => {
+        // If signature is not null and not all zeros, consider it already signed
+        if (sig && !sig.every(byte => byte === 0)) {
+          // Get the corresponding public key for this signature index
+          if (index < requiredSigners.length) {
+            const pubkeyStr = requiredSigners[index].toString();
+            alreadySignedKeys.add(pubkeyStr);
+          }
+        }
+      });
+      
       // Track signatures added in this operation
       const addedSignatures: string[] = [];
       
-      // Get information about required signers
-      const signingStatus = isVersioned
-        ? getVersionedTransactionSigningStatus(transaction as VersionedTransaction, keypairs, addedSignatures)
-        : getLegacyTransactionSigningStatus(transaction as Transaction, keypairs, addedSignatures);
+      // Filter keypairs to only include those needed for this transaction
+      const relevantKeypairs = keypairs.filter(keypair => {
+        const pubkeyStr = keypair.publicKey.toString();
+        return signerKeyToIndex.has(pubkeyStr) && !alreadySignedKeys.has(pubkeyStr);
+      });
+      
+      // If we have any relevant keypairs, sign the transaction
+      if (relevantKeypairs.length > 0) {
+        // Use the new signTransactionWithSigners function to sign
+        transaction = signTransactionWithSigners(transaction, relevantKeypairs);
+        
+        // Track which signatures were added
+        relevantKeypairs.forEach(keypair => {
+          const pubkeyStr = keypair.publicKey.toString();
+          addedSignatures.push(pubkeyStr);
+          alreadySignedKeys.add(pubkeyStr);
+        });
+      }
+      
+      // Identify remaining signers
+      const remainingSigners = requiredSigners
+        .filter(pubkey => !alreadySignedKeys.has(pubkey.toString()))
+        .map(pubkey => pubkey.toString());
+      
+      // Create the signing status response
+      const signingStatus = {
+        totalRequired: requiredSigners.length,
+        added: addedSignatures.length,
+        alreadySigned: alreadySignedKeys.size - addedSignatures.length,
+        isFullySigned: remainingSigners.length === 0,
+        remainingSigners: remainingSigners.length > 0 ? remainingSigners : undefined,
+      };
       
       // Create result
       const result: SignTransactionResult = {
@@ -212,10 +262,7 @@ export const signTransactionTool = {
       
       // Include signed transaction if requested
       if (validatedParams.returnSignedTransaction) {
-        const serializedTransaction = isVersioned
-          ? (transaction as VersionedTransaction).serialize()
-          : (transaction as Transaction).serialize();
-          
+        const serializedTransaction = transaction.serialize();
         result.signedTransaction = Buffer.from(serializedTransaction).toString('base64');
       }
       
@@ -256,21 +303,21 @@ export const signTransactionTool = {
  * @param signer - The signer in various formats (array, object, or string)
  * @returns A Solana Keypair object
  */
-function convertToKeypair(signer: any): Keypair {
+function convertToKeypair(signer: any): KeyPair {
   if (Array.isArray(signer)) {
     // Array of numbers (secretKey)
-    return Keypair.fromSecretKey(Uint8Array.from(signer));
+    return importKeyPair(Uint8Array.from(signer));
   }
   
   if (typeof signer === 'object' && signer.secretKey) {
     // Object with secretKey property
     if (Array.isArray(signer.secretKey)) {
-      return Keypair.fromSecretKey(Uint8Array.from(signer.secretKey));
+      return importKeyPair(Uint8Array.from(signer.secretKey));
     }
     
     if (typeof signer.secretKey === 'string') {
       // Try to parse as hex string
-      return Keypair.fromSecretKey(Uint8Array.from(
+      return importKeyPair(Uint8Array.from(
         Buffer.from(signer.secretKey, 'hex')
       ));
     }
@@ -278,7 +325,7 @@ function convertToKeypair(signer: any): Keypair {
   
   if (typeof signer === 'string') {
     // Hex string
-    return Keypair.fromSecretKey(Uint8Array.from(
+    return importKeyPair(Uint8Array.from(
       Buffer.from(signer, 'hex')
     ));
   }
@@ -286,169 +333,5 @@ function convertToKeypair(signer: any): Keypair {
   throw new ValidationError(
     'Invalid signer format. Must be an array of numbers, a hex string, or an object with secretKey.',
     'signers'
-  );
-}
-
-/**
- * Gets the signing status for a legacy transaction
- * 
- * @param transaction - The legacy transaction
- * @param keypairs - Array of keypairs to sign with
- * @param addedSignatures - Array to collect added signatures
- * @returns Signing status object
- */
-function getLegacyTransactionSigningStatus(
-  transaction: Transaction,
-  keypairs: Keypair[],
-  addedSignatures: string[]
-): SignTransactionResult['signingStatus'] {
-  // Get the message to determine required signers
-  const message = transaction.compileMessage();
-  const requiredSignerKeys = message.accountKeys
-    .filter((_, index) => message.isAccountSigner(index));
-  
-  // Track already signed keys
-  const alreadySignedKeys = new Set<string>();
-  const signerKeyToIndex = new Map<string, number>();
-  
-  // Map requiredSignerKeys public keys to their indices in the accountKeys array
-  for (let i = 0; i < message.accountKeys.length; i++) {
-    if (message.isAccountSigner(i)) {
-      const pubkey = message.accountKeys[i].toString();
-      signerKeyToIndex.set(pubkey, i);
-    }
-  }
-  
-  // Check for existing signatures
-  if (transaction.signatures && transaction.signatures.length > 0) {
-    transaction.signatures.forEach((signatureInfo, index) => {
-      if (signatureInfo.signature) {
-        const pubkey = signatureInfo.publicKey.toString();
-        alreadySignedKeys.add(pubkey);
-      }
-    });
-  }
-  
-  // Apply new signatures
-  for (const keypair of keypairs) {
-    const publicKey = keypair.publicKey.toString();
-    const signerIndex = signerKeyToIndex.get(publicKey);
-    
-    // Only sign if this keypair corresponds to a required signer and isn't already signed
-    if (signerIndex !== undefined && !alreadySignedKeys.has(publicKey)) {
-      transaction.partialSign(keypair);
-      addedSignatures.push(publicKey);
-      alreadySignedKeys.add(publicKey);
-    }
-  }
-  
-  // Identify remaining signers
-  const remainingSigners = requiredSignerKeys
-    .filter(key => !alreadySignedKeys.has(key.toString()))
-    .map(key => key.toString());
-  
-  return {
-    totalRequired: requiredSignerKeys.length,
-    added: addedSignatures.length,
-    alreadySigned: alreadySignedKeys.size - addedSignatures.length,
-    isFullySigned: remainingSigners.length === 0,
-    remainingSigners: remainingSigners.length > 0 ? remainingSigners : undefined,
-  };
-}
-
-/**
- * Gets the signing status for a versioned transaction
- * 
- * @param transaction - The versioned transaction
- * @param keypairs - Array of keypairs to sign with
- * @param addedSignatures - Array to collect added signatures
- * @returns Signing status object
- */
-function getVersionedTransactionSigningStatus(
-  transaction: VersionedTransaction,
-  keypairs: Keypair[],
-  addedSignatures: string[]
-): SignTransactionResult['signingStatus'] {
-  const message = transaction.message;
-  
-  // Get all required signers from the message
-  const requiredSigners = getSignersFromVersionedMessage(message);
-  
-  // Track already signed keys (map public key string to its index in requiredSigners)
-  const alreadySignedKeys = new Set<string>();
-  const signerKeyToIndex = new Map<string, number>();
-  
-  // Map requiredSigners public keys to their indices
-  requiredSigners.forEach((pubkey, index) => {
-    signerKeyToIndex.set(pubkey.toString(), index);
-  });
-  
-  // Check existing signatures
-  if (transaction.signatures && transaction.signatures.length > 0) {
-    for (let i = 0; i < Math.min(transaction.signatures.length, requiredSigners.length); i++) {
-      const signature = transaction.signatures[i];
-      if (signature && signature.every(byte => byte !== 0)) {
-        const pubkey = requiredSigners[i].toString();
-        alreadySignedKeys.add(pubkey);
-      }
-    }
-  }
-  
-  // Apply new signatures
-  for (const keypair of keypairs) {
-    const publicKey = keypair.publicKey.toString();
-    const signerIndex = signerKeyToIndex.get(publicKey);
-    
-    if (signerIndex !== undefined && !alreadySignedKeys.has(publicKey)) {
-      // For versioned transactions, we need to add the signature at the correct index
-      transaction.signatures = transaction.signatures || [];
-      while (transaction.signatures.length <= signerIndex) {
-        transaction.signatures.push(null);
-      }
-      
-      // Sign the message with this keypair
-      const messageData = message.serialize();
-      const signature = keypair.sign(messageData).signature;
-      transaction.signatures[signerIndex] = signature;
-      
-      // Track this signature
-      addedSignatures.push(publicKey);
-      alreadySignedKeys.add(publicKey);
-    }
-  }
-  
-  // Identify remaining signers
-  const remainingSigners = requiredSigners
-    .filter(key => !alreadySignedKeys.has(key.toString()))
-    .map(key => key.toString());
-  
-  return {
-    totalRequired: requiredSigners.length,
-    added: addedSignatures.length,
-    alreadySigned: alreadySignedKeys.size - addedSignatures.length,
-    isFullySigned: remainingSigners.length === 0,
-    remainingSigners: remainingSigners.length > 0 ? remainingSigners : undefined,
-  };
-}
-
-/**
- * Gets all signers required by a versioned message
- * 
- * @param message - The versioned message
- * @returns Array of public keys for required signers
- */
-function getSignersFromVersionedMessage(message: VersionedMessage): PublicKey[] {
-  if ('version' in message && message.version === 0) {
-    // This is a v0 message
-    const staticAccountKeys = message.staticAccountKeys;
-    const numRequiredSignatures = message.header.numRequiredSignatures;
-    
-    // Return the first numRequiredSignatures keys as signers
-    return staticAccountKeys.slice(0, numRequiredSignatures);
-  }
-  
-  throw new ValidationError(
-    'Unsupported message version. Only version 0 messages are supported.',
-    'transaction'
   );
 }

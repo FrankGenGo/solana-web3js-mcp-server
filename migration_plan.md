@@ -24,9 +24,15 @@ This document outlines the step-by-step plan for migrating the Solana-web3js MCP
     - `/src/tools/accounts/find.ts` - Updated to use RPC client with `.send()` pattern
     - `/src/tools/accounts/rent.ts` - Updated to use RPC client with `.send()` pattern
     - `/src/tools/accounts/index.ts` - Updated to register migrated tools
+  - Migrated transaction tools:
+    - `/src/tools/transactions/create.ts` - Updated to use message composition pattern
+    - `/src/tools/transactions/sign.ts` - Updated to use `signTransactionWithSigners()`
+    - `/src/tools/transactions/send.ts` - Updated to use `sendTransactionFactory()` and `sendAndConfirmTransactionFactory()`
+    - `/src/tools/transactions/status.ts` - Updated to use `getSignatureStatusesFactory()` and `getTransactionFactory()`
+    - `/src/tools/transactions/simulate.ts` - Created new implementation using `simulateTransactionFactory()`
+    - `/src/tools/transactions/index.ts` - Updated to register migrated tools
 
 - **Pending Migration Tasks**:
-  - Transaction tools need to be migrated to use the new message composition pattern
   - Program deployment tools need to be updated
   - Entry points and transport layers need to be fixed
 

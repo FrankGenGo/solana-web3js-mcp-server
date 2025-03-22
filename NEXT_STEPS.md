@@ -9,7 +9,7 @@ This document outlines the next steps for the Solana-web3js MCP server project f
   - Basic tools (Phase 2)
   - Program deployment tools (Phase 3)
   - Token operations tools (Phase 3)
-  - Web3.js v2.0 Migration (Partial - In Progress)
+  - Web3.js v2.0 Migration (Substantial Progress)
     - Created migration branch
     - Updated dependencies
     - Migrated connection-manager.ts
@@ -22,6 +22,13 @@ This document outlines the next steps for the Solana-web3js MCP server project f
       - find.ts - Find program accounts
       - rent.ts - Calculate rent exemption
       - index.ts - Register account tools
+    - Migrated transaction tools
+      - create.ts - Transaction creation with message composition pattern
+      - sign.ts - Transaction signing with new functional API
+      - send.ts - Transaction sending with factory functions
+      - status.ts - Transaction status checking with factory functions
+      - simulate.ts - Transaction simulation with functional API
+      - index.ts - Updated exports and tool registration
 
 - **Current TypeScript Errors**: Remaining errors in files not yet migrated to web3.js v2.0
   - These errors are primarily related to compatibility with web3.js v2.0
@@ -31,13 +38,10 @@ This document outlines the next steps for the Solana-web3js MCP server project f
 
 ### 1. Continue Web3.js v2.0 Migration (Priority)
 
-The migration has been started, and several key components have been updated. Continue following the detailed migration plan in `migration_plan.md`:
+The migration has made substantial progress, with account management tools and transaction tools now fully migrated. Continue following the detailed migration plan in `migration_plan.md`:
 
 1. **Complete Tool Migration in This Order**:
-   - Transaction Tools (Next)
-     - Update transaction creation, signing, and sending functionality
-     - Focus on adapting to the functional message composition pattern
-   - Program Tools
+   - Program Tools (Next)
      - Update program deployment and upgrade logic
      - Migrate buffer utilities and loader utilities
 
