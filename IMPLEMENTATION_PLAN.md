@@ -40,6 +40,8 @@
   - [ ] Create Token Tool
   - [ ] Mint Tokens Tool
   - [ ] Transfer Tokens Tool
+  - [ ] Get Token Account Info Tool
+  - [ ] Get Token Supply Tool
 - [ ] Resources
   - [ ] Solana Concepts Documentation
   - [ ] Program Development Guide
@@ -48,6 +50,7 @@
   - [ ] Transaction Creation Guide
   - [ ] Program Deployment Walkthrough
   - [ ] Token Creation Guide
+  - [ ] Conversational Blockchain Query Guide
 
 ## Phase 4: Quality and Performance
 
@@ -58,16 +61,45 @@
 - [ ] Performance Optimization
   - [ ] Connection Pooling
   - [ ] Result Caching
+  - [ ] Web3.js v2.0 Migration
 - [ ] Security Enhancements
   - [ ] Input Validation
   - [ ] Secure Key Handling
   - [ ] Rate Limiting
 
-## Phase 5: CI/CD and Documentation
+## Phase 5: Extended RPC Functionality
+
+- [ ] Comprehensive Solana RPC Coverage
+  - [ ] Block Data Tools
+    - [ ] Get Block Tool
+    - [ ] Get Block Production Tool
+    - [ ] Get Recent Blockhash Tool
+  - [ ] System Information Tools
+    - [ ] Get Health Tool
+    - [ ] Get Genesis Hash Tool
+    - [ ] Get Version Tool
+  - [ ] Epoch and Inflation Tools
+    - [ ] Get Epoch Info Tool
+    - [ ] Get Inflation Rate Tool
+    - [ ] Get Inflation Reward Tool
+  - [ ] Enhanced Account Tools
+    - [ ] Get Multiple Accounts Tool
+    - [ ] Get Program Accounts With Filters Tool
+    - [ ] Get Account History Tool
+- [ ] Natural Language Interaction
+  - [ ] Conversational Query Prompts
+  - [ ] User-Friendly Error Explanations
+  - [ ] Guided Blockchain Exploration Prompts
+
+## Phase 6: CI/CD and Documentation
 
 - [ ] GitHub Actions for CI/CD
 - [ ] Comprehensive Documentation
   - [ ] API Reference
   - [ ] Usage Examples
   - [ ] Deployment Guide
+  - [ ] Educational Resources
 - [ ] Release Management
+  - [ ] Package Distribution
+  - [ ] Version Strategy
+  - [ ] Changelog Management
