@@ -4,6 +4,8 @@
 
 This document outlines the step-by-step plan for migrating the Solana-web3js MCP Server from @solana/web3.js v1.x to v2.0. The migration is necessary to leverage the performance improvements, enhanced TypeScript support, and modern functional programming patterns introduced in v2.0.
 
+**Update (2025-03-22)**: All token operations tools have been implemented using the v1.x API. The next priority is to migrate the entire codebase to Web3.js v2.0 as outlined in this document.
+
 ## Current Status
 
 - Current version: @solana/web3.js v1.98.0 (specified as ^1.91.1 in package.json)

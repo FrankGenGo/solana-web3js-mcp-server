@@ -11,6 +11,7 @@ import { registerKeyTools } from "./tools/keys/index.js";
 import { registerTransactionTools } from "./tools/transactions/index.js";
 import { registerAccountTools } from "./tools/accounts/index.js";
 import { registerProgramTools } from "./tools/programs/index.js";
+import { registerTokenTools } from "./tools/tokens/index.js";
 
 // Server version - update this when making significant changes
 const VERSION = "0.1.0";
@@ -41,7 +42,7 @@ export function createSolanaServer() {
     registerTransactionTools(server, connectionManager);
     registerProgramTools(server, connectionManager);
     registerKeyTools(server);
-    // registerTokenTools(server, connectionManager);
+    registerTokenTools(server, connectionManager);
 
     // Register resources
     // These will be imported and registered here once implemented

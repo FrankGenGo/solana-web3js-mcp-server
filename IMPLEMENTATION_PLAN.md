@@ -36,12 +36,12 @@
   - [x] Deploy Program Tool
   - [x] Upgrade Program Tool
   - [x] Generate Program Address Tool
-- [ ] Token Operations Tools
-  - [ ] Create Token Tool
-  - [ ] Mint Tokens Tool
-  - [ ] Transfer Tokens Tool
-  - [ ] Get Token Account Info Tool
-  - [ ] Get Token Supply Tool
+- [x] Token Operations Tools
+  - [x] Create Token Tool
+  - [x] Mint Tokens Tool
+  - [x] Transfer Tokens Tool
+  - [x] Get Token Account Info Tool
+  - [x] Get Token Supply Tool
 - [ ] Resources
   - [ ] Solana Concepts Documentation
   - [ ] Program Development Guide

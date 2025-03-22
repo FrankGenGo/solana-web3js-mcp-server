@@ -72,8 +72,8 @@ This project follows a specialized agent approach where the Project Manager (Cla
 4. ⬜ Create basic resources and documentation
 
 ### Phase 3: Advanced Functionality (Current Phase)
-1. ⬜ Implement program deployment tools
-2. ⬜ Implement token operations tools
+1. ✅ Implement program deployment tools
+2. ✅ Implement token operations tools
 3. ⬜ Enhance resources with comprehensive documentation
 4. ⬜ Develop advanced prompts for complex workflows
 
