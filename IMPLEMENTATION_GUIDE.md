@@ -267,6 +267,81 @@ const simulation = await simulateTransaction(signedTx).send();
 - Implement batch processing for related operations
 - Reduce bundle size through module optimization
 
+## CLI Parity Implementation
+
+To achieve full functionality parity with the Solana CLI, the following tool sets must be implemented:
+
+### Configuration Management
+
+- **Get Config Tool**
+  - Retrieve and display current configuration
+  - Include RPC URL, keypair path, commitment level
+  - Match output format of `solana config get`
+
+- **Set Config Tool**
+  - Update configuration parameters
+  - Support all CLI config options
+  - Store configuration persistently
+
+### Enhanced Keypair Management
+
+- **Save Keypair Tool**
+  - Save keypairs to specified file path
+  - Support various output formats
+  - Implement secure storage options
+
+- **Recover Keypair Tool**
+  - Recover keypairs from seed phrases
+  - Support BIP39 passphrase
+  - Match functionality of `solana-keygen recover`
+
+- **Keypair Verification Tool**
+  - Verify keypair integrity
+  - Match all `solana-keygen verify` functionality
+
+### Network Interaction
+
+- **Airdrop Tool**
+  - Request SOL from faucet on devnet/testnet
+  - Support customizable amounts
+  - Include error handling for rate limits
+
+- **Stake Management Tools**
+  - Implement all stake account operations
+  - Support delegation and withdrawal
+  - Include stake account status queries
+
+### Transaction Utilities
+
+- **Decode Transaction Tool**
+  - Parse transaction details from serialized format
+  - Display human-readable transaction information
+  - Support various encoding formats
+
+- **Confirm Transaction Tool**
+  - Check transaction confirmation status
+  - Wait for specified confirmation level
+  - Report detailed status information
+
+### Blockchain Data Inspection
+
+- **Block Data Tools**
+  - Retrieve block details by slot number
+  - Get recent blocks
+  - Support filtering and output formatting
+
+- **System Information Tools**
+  - Monitor network health
+  - Display version information
+  - Track cluster status
+
+### Logging & Monitoring
+
+- **Transaction Logs Tool**
+  - Stream and display transaction logs
+  - Filter by address, program ID, or signature
+  - Support both historical and real-time log viewing
+
 ## Implementation Priorities (Updated 2025-03-22)
 
 1. **Completed**: 
@@ -283,7 +358,10 @@ const simulation = await simulateTransaction(signedTx).send();
    - Implement unit tests for migrated components
    - Add integration tests for MCP functionality
    - Create end-to-end tests for Solana operations
-4. **Future Priority**: Implement extended RPC functionality
+4. **Future Priority**: Implement CLI parity functionality
+   - Start with configuration and keypair management
+   - Add network interaction capabilities
+   - Implement block and transaction inspection tools
 5. **Future Priority**: Develop natural language interaction capabilities
 
 Each phase should include documentation updates and example code to demonstrate usage.

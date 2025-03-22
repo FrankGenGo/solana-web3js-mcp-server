@@ -114,6 +114,32 @@ npm start
 - `getTokenAccountInfo`: Get token account information
 - `getTokenSupply`: Get the total supply of a token
 
+### Configuration Management (Planned)
+- `getConfig`: Get current configuration settings
+- `setConfig`: Update configuration parameters
+- `getClusterVersion`: Get Solana cluster version
+
+### Extended Keypair Management (Planned)
+- `saveKeypair`: Save keypair to secure storage
+- `recoverKeypair`: Recover keypair from seed phrase
+- `verifyKeypair`: Verify keypair integrity
+
+### Network Interaction (Planned)
+- `requestAirdrop`: Request SOL from devnet/testnet faucet
+- `manageStake`: Create and manage stake accounts
+- `getValidators`: Get validator information
+
+### Blockchain Data Inspection (Planned)
+- `getBlock`: Get block details by slot number
+- `getBlockProduction`: Get block production statistics
+- `getRecentBlockhash`: Get recent blockhash with fee calculator
+- `getEpochInfo`: Get current epoch information
+- `getInflationRate`: Get current inflation rate
+
+### Logging & Monitoring (Planned)
+- `getLogs`: Stream and filter transaction logs
+- `getProgramLogs`: Monitor program execution logs
+
 ## Development
 
 ```bash

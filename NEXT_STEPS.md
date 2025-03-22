@@ -93,13 +93,48 @@ The migration has made substantial progress, with account management tools and t
 
 ## Extended Roadmap
 
-### Phase 5: Extended RPC Functionality
+### Phase 5: Extended Functionality (CLI Parity)
 
-- Implement Block Data Tools
-- Implement System Information Tools
-- Implement Epoch and Inflation Tools
-- Implement Enhanced Account Tools
-- Develop Natural Language Interaction capabilities
+- **Configuration Management Tools**
+  - Get and set configuration
+  - Manage cluster connections
+  - Store and retrieve user preferences
+
+- **Enhanced Keypair Management**
+  - Save keypairs to secure storage
+  - Recover keypairs from seed phrases
+  - Verify keypair integrity
+  - Generate and display keypair information
+
+- **Network Interaction Tools**
+  - Request airdrops for testing environments
+  - Manage stake accounts and delegation
+  - Interact with validators
+  - Vote account management
+
+- **Transaction Utilities**
+  - Decode transaction details
+  - Confirm transaction status
+  - Resend or retry failed transactions
+
+- **Blockchain Data Inspection**
+  - Block data retrieval and analysis
+  - System health and version monitoring
+  - Epoch and inflation information
+  - Enhanced account queries and filtering
+
+- **Logging & Monitoring**
+  - Transaction and program log monitoring
+  - Performance tracking and analysis
+
+- **Comprehensive CLI Emulation**
+  - Support all Solana CLI operations through MCP
+  - Provide unified interface for CLI functionality
+
+- **Natural Language Interaction**
+  - Develop conversational interfaces to Solana operations
+  - Create user-friendly explanations for errors
+  - Implement guided blockchain exploration workflows
 
 ### Phase 6: CI/CD and Documentation
 

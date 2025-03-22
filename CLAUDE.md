@@ -103,6 +103,18 @@ The project is actively migrating from web3.js v1.x to v2.0, which involves:
 7. Using `Address` type instead of `PublicKey` class
 8. Enhancing type safety with improved TypeScript interfaces
 
+## CLI Parity Initiative
+
+The project aims to achieve full parity with the Solana CLI, enabling all functionalities available through the command line to be accessible via our MCP server. This includes:
+
+1. Configuration management (get/set config, cluster settings)
+2. Enhanced keypair management (save, recover, verify keypairs)
+3. Network interaction (airdrops, stake management, validator tools)
+4. Transaction utilities (decode, confirm, resend transactions)
+5. Blockchain data inspection (blocks, epochs, inflation, validators)
+6. Logging and monitoring capabilities
+7. End-to-end parity with all Solana CLI commands
+
 ### Migration Progress
 
 1. ✅ Core Infrastructure

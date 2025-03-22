@@ -77,25 +77,63 @@
   - [ ] Secure Key Handling
   - [ ] Rate Limiting
 
-## Phase 5: Extended RPC Functionality
+## Phase 5: Extended Functionality (CLI Parity)
 
-- [ ] Comprehensive Solana RPC Coverage
+- [ ] Configuration Management
+  - [ ] Get Config Tool (equivalent to `solana config get`)
+  - [ ] Set Config Tool (equivalent to `solana config set`)
+  - [ ] Get Cluster Version Tool (equivalent to `solana cluster-version`)
+
+- [ ] Enhanced Keypair Management
+  - [ ] Save Keypair Tool (for persistent storage)
+  - [ ] Recover Keypair Tool (from seed phrase, equivalent to `solana-keygen recover`)
+  - [ ] Verify Keypair Tool (equivalent to `solana-keygen verify`)
+  - [ ] Keypair Information Tool (equivalent to `solana-keygen pubkey`)
+
+- [ ] Network Interaction
+  - [ ] Airdrop Tool (equivalent to `solana airdrop`)
+  - [ ] Stake Management Tools
+    - [ ] Create Stake Account Tool
+    - [ ] Delegate Stake Tool
+    - [ ] Deactivate Stake Tool
+    - [ ] Withdraw Stake Tool
+  - [ ] Validator Tools
+    - [ ] Get Validators Tool
+    - [ ] Vote Account Tool
+
+- [ ] Transaction Utilities
+  - [ ] Decode Transaction Tool (equivalent to `solana decode-transaction`)
+  - [ ] Confirm Transaction Tool (equivalent to `solana confirm`)
+  - [ ] Resend Transaction Tool
+
+- [ ] Blockchain Data Inspection
   - [ ] Block Data Tools
-    - [ ] Get Block Tool
+    - [ ] Get Block Tool (equivalent to `solana block`)
     - [ ] Get Block Production Tool
     - [ ] Get Recent Blockhash Tool
   - [ ] System Information Tools
-    - [ ] Get Health Tool
+    - [ ] Get Health Tool (equivalent to `solana catchup`)
     - [ ] Get Genesis Hash Tool
-    - [ ] Get Version Tool
+    - [ ] Get Version Tool (equivalent to `solana version`)
   - [ ] Epoch and Inflation Tools
-    - [ ] Get Epoch Info Tool
+    - [ ] Get Epoch Info Tool (equivalent to `solana epoch-info`)
     - [ ] Get Inflation Rate Tool
     - [ ] Get Inflation Reward Tool
+    - [ ] Get Leader Schedule Tool (equivalent to `solana leader-schedule`)
   - [ ] Enhanced Account Tools
     - [ ] Get Multiple Accounts Tool
     - [ ] Get Program Accounts With Filters Tool
     - [ ] Get Account History Tool
+    - [ ] Get Largest Accounts Tool (equivalent to `solana largest-accounts`)
+
+- [ ] Logging & Monitoring
+  - [ ] Transaction Logs Tool (equivalent to `solana logs`)
+  - [ ] Program Logs Tool
+
+- [ ] Comprehensive CLI Emulation
+  - [ ] Command Parsing & Handling
+  - [ ] Unified Interface for All CLI Operations
+
 - [ ] Natural Language Interaction
   - [ ] Conversational Query Prompts
   - [ ] User-Friendly Error Explanations
