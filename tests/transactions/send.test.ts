@@ -208,15 +208,18 @@ describe('Transaction Send Tool Tests (Unit)', () => {
 });
 
 // Integration tests that connect to a real network
-// These are skipped by default and can be enabled by setting ENABLE_NETWORK_TESTS=true
-(process.env.ENABLE_NETWORK_TESTS ? describe : describe.skip)('Transaction Send Tool Tests (Integration)', () => {
+// Always run these tests since we have a funded devnet wallet
+describe('Transaction Send Tool Tests (Integration)', () => {
   // Use the real ConnectionManager for these tests
   jest.unmock('../../src/core/connection-manager.js');
   const { getConnectionManager } = require('../../src/core/connection-manager.js');
   
   it('should send a minimal transaction to devnet', async () => {
-    // Get test keypairs
-    const keypair = getTestKeypair();
+    // Use our funded devnet keypair for testing
+    const keypair = getTestKeypair(); // This now points to ~/solana-web3js-tests/test-keypair.json
+    console.log('Using test keypair with public key:', keypair.publicKey);
+    
+    // Generate a new keypair as the recipient
     const recipient = generateTestKeypair().publicKey;
     
     // Create and sign a transaction

@@ -30,8 +30,8 @@ export const TEST_NETWORKS = {
   localnet: 'http://localhost:8899'
 };
 
-// Default test directory in user's home
-const TEST_DIR = path.join(os.homedir(), '.solana-web3js-mcp-test');
+// Use dedicated test keypair for Solana devnet tests
+const TEST_DIR = path.join(os.homedir(), 'solana-web3js-tests');
 const KEYPAIR_FILE = path.join(TEST_DIR, 'test-keypair.json');
 
 /**

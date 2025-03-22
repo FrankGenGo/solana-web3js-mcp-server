@@ -120,12 +120,36 @@ npm start
 # Run in development mode (with auto-reload)
 npm run dev
 
-# Run tests
+# Run tests (including integration tests against devnet)
 npm test
 
 # Lint the code
 npm run lint
 ```
+
+### Setting Up Test Environment
+
+The test suite includes integration tests that run against the Solana devnet. To set up your environment for testing:
+
+1. **Install Solana CLI**: Follow the [official installation instructions](https://docs.solanalabs.com/cli/install)
+
+2. **Generate a test keypair**:
+   ```bash
+   mkdir -p ~/solana-web3js-tests
+   solana-keygen new --force --no-bip39-passphrase -o ~/solana-web3js-tests/test-keypair.json
+   ```
+
+3. **Fund the test keypair with devnet SOL**:
+   ```bash
+   solana airdrop 1 $(solana address -k ~/solana-web3js-tests/test-keypair.json) --url devnet
+   ```
+
+4. **Verify the balance**:
+   ```bash
+   solana balance -k ~/solana-web3js-tests/test-keypair.json --url devnet
+   ```
+
+The test suite will automatically use this keypair for integration tests against devnet.
 
 ## Project Structure
 
