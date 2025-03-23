@@ -23,6 +23,7 @@ import type {
 import { getLogger } from '../../utils/logging.js';
 import { ValidationError, PublicKeyError, TransactionError, tryCatchSync } from '../../utils/errors.js';
 import { z } from 'zod';
+import { ServerDependencies } from '../../solana-server.js';
 
 // Logger for this module
 const logger = getLogger('sign-transaction-tool');
@@ -54,7 +55,7 @@ const signTransactionSchema = z.object({
 });
 
 // Type for the tool parameters
-type SignTransactionParams = z.infer<typeof signTransactionSchema>;
+export type SignTransactionParams = z.infer<typeof signTransactionSchema>;
 
 // Type for the tool response
 export interface SignTransactionResult {
@@ -84,73 +85,13 @@ export interface SignTransactionResult {
 }
 
 /**
- * Signs a transaction with the provided keypairs
+ * Creates a function to execute the sign transaction operation
  * 
- * @param params - Tool parameters
- * @returns Object containing signing status and the signed transaction
+ * @param deps - Server dependencies
+ * @returns Execute function for signing transactions
  */
-export const signTransactionTool = {
-  name: 'signTransaction',
-  description: 'Signs a Solana transaction with one or more keypairs',
-  
-  parameters: {
-    type: 'object',
-    properties: {
-      transaction: {
-        type: 'string',
-        description: 'Base64-encoded serialized transaction to sign',
-      },
-      signers: {
-        type: 'array',
-        description: 'Array of keypairs to sign with',
-        items: {
-          oneOf: [
-            {
-              type: 'array',
-              description: 'Secret key as array of 64 bytes',
-              items: {
-                type: 'number',
-              },
-            },
-            {
-              type: 'object',
-              description: 'Keypair object with secretKey property',
-              properties: {
-                secretKey: {
-                  oneOf: [
-                    {
-                      type: 'array',
-                      items: {
-                        type: 'number',
-                      },
-                    },
-                    {
-                      type: 'string',
-                      description: 'Secret key as hex string',
-                    },
-                  ],
-                },
-              },
-              required: ['secretKey'],
-            },
-            {
-              type: 'string',
-              description: 'Secret key as hex string',
-            },
-          ],
-        },
-      },
-      returnSignedTransaction: {
-        type: 'boolean',
-        description: 'Whether to return the signed transaction in the response',
-        default: true,
-      },
-    },
-    required: ['transaction', 'signers'],
-    additionalProperties: false,
-  },
-  
-  execute: (params: SignTransactionParams): SignTransactionResult => {
+export function createSignTransactionExecutor(deps: ServerDependencies) {
+  return (params: SignTransactionParams): SignTransactionResult => {
     logger.info('Signing transaction', {
       signerCount: params.signers.length,
       returnSignedTransaction: params.returnSignedTransaction,
@@ -294,8 +235,80 @@ export const signTransactionTool = {
         { cause: error }
       );
     });
-  }
-};
+  };
+}
+
+/**
+ * Get the sign transaction tool definition
+ * 
+ * @param deps - Server dependencies
+ * @returns Sign transaction tool definition
+ */
+export function getSignTransactionTool(deps: ServerDependencies) {
+  return {
+    name: 'signTransaction',
+    description: 'Signs a Solana transaction with one or more keypairs',
+    
+    parameters: {
+      type: 'object',
+      properties: {
+        transaction: {
+          type: 'string',
+          description: 'Base64-encoded serialized transaction to sign',
+        },
+        signers: {
+          type: 'array',
+          description: 'Array of keypairs to sign with',
+          items: {
+            oneOf: [
+              {
+                type: 'array',
+                description: 'Secret key as array of 64 bytes',
+                items: {
+                  type: 'number',
+                },
+              },
+              {
+                type: 'object',
+                description: 'Keypair object with secretKey property',
+                properties: {
+                  secretKey: {
+                    oneOf: [
+                      {
+                        type: 'array',
+                        items: {
+                          type: 'number',
+                        },
+                      },
+                      {
+                        type: 'string',
+                        description: 'Secret key as hex string',
+                      },
+                    ],
+                  },
+                },
+                required: ['secretKey'],
+              },
+              {
+                type: 'string',
+                description: 'Secret key as hex string',
+              },
+            ],
+          },
+        },
+        returnSignedTransaction: {
+          type: 'boolean',
+          description: 'Whether to return the signed transaction in the response',
+          default: true,
+        },
+      },
+      required: ['transaction', 'signers'],
+      additionalProperties: false,
+    },
+    
+    execute: createSignTransactionExecutor(deps)
+  };
+}
 
 /**
  * Converts various signer input formats to a Keypair object
