@@ -6,14 +6,13 @@
  */
 
 import { 
-  Connection, 
   PublicKey, 
   Commitment
 } from "@solana/web3.js";
 import { 
   getMint,
   TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
+} from "@solana-program/token";
 import { z } from "zod";
 import { getLogger } from "../../utils/logging.js";
 import { 
@@ -100,8 +99,10 @@ async function executeGetTokenSupply(
       const mintInfo = await getMint(
         connection,
         tokenMint,
-        validatedParams.commitment as Commitment
-      );
+        {
+          commitment: validatedParams.commitment as Commitment
+        }
+      ).send();
       
       // Calculate formatted supply
       const formattedSupply = (Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals)).toString();

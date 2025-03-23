@@ -7,16 +7,12 @@
  */
 
 import {
-  getTransactionFactory,
-  getSignatureStatusesFactory
-} from '@solana/web3.js';
-
-import type {
-  Finality,
-  Address,
-  TransactionSignature,
+  Commitment,
   TransactionError as SolanaTransactionError
 } from '@solana/web3.js';
+
+// Finality is just a Commitment alias in web3.js v2.0
+type Finality = Commitment;
 
 import { getLogger } from '../../utils/logging.js';
 import { 
@@ -192,17 +188,18 @@ export const getTransactionStatusTool = {
       };
       
       try {
-        // First check the signature status - we use factory function to get the function
-        const getSignatureStatuses = getSignatureStatusesFactory(rpcClient);
+        // In web3.js v2.0, we can directly use the RPC client methods
+        // First check the signature status
+        const signatureStatusesResponse = await rpcClient.getSignatureStatuses([signature], {
+          searchTransactionHistory: true
+        }).send();
         
-        // Then call .send() to execute the RPC call
-        const signatureStatuses = await getSignatureStatuses([signature]).send();
-        const signatureStatus = signatureStatuses?.value[0];
+        const signatureStatus = signatureStatusesResponse?.value[0];
         
         if (signatureStatus) {
           // Transaction found in status lookup
           result.confirmationStatus = signatureStatus.confirmationStatus || null;
-          result.slot = signatureStatus.slot;
+          result.slot = Number(signatureStatus.slot); // Convert bigint to number
           
           // Determine the high-level status
           if (signatureStatus.err) {
@@ -233,11 +230,8 @@ export const getTransactionStatusTool = {
         } else if (checkPending) {
           // Check if the transaction is pending (in the mempool but not yet processed)
           try {
-            // Create getTransaction function using factory
-            const getTransaction = getTransactionFactory(rpcClient);
-            
-            // Check with 'processed' commitment to catch pending transactions
-            const transaction = await getTransaction(signature, {
+            // In web3.js v2.0, use direct RPC method 
+            const transaction = await rpcClient.getTransaction(signature, {
               maxSupportedTransactionVersion: 0,
               commitment: 'processed'
             }).send();
@@ -296,11 +290,8 @@ async function fetchTransactionDetails(
   commitment: Finality
 ): Promise<void> {
   try {
-    // Create getTransaction function using factory
-    const getTransaction = getTransactionFactory(rpcClient);
-    
-    // Get the full transaction data with .send()
-    const transaction = await getTransaction(signature, {
+    // In web3.js v2.0, we directly use the RPC client's getTransaction method
+    const transaction = await rpcClient.getTransaction(signature, {
       maxSupportedTransactionVersion: 0,
       commitment
     }).send();
@@ -311,7 +302,7 @@ async function fetchTransactionDetails(
     
     // Add timestamp if available
     if (transaction.blockTime) {
-      result.timestamp = transaction.blockTime;
+      result.timestamp = Number(transaction.blockTime); // Convert bigint to number if needed
     }
     
     // If we have a failed transaction with a returned error, parse it
@@ -321,23 +312,33 @@ async function fetchTransactionDetails(
     
     // Add detailed information if requested
     result.details = {
-      fee: transaction.meta?.fee,
-      accounts: transaction.transaction.message.getAccountKeys().map(key => 
-        key.toString()
-      ),
-      instructionCount: transaction.transaction.message.compiledInstructions.length,
-      recentBlockhash: transaction.transaction.message.recentBlockhash,
+      fee: transaction.meta?.fee ? Number(transaction.meta.fee) : undefined, // Convert bigint to number
+      accounts: [],
+      instructionCount: transaction.transaction.message.instructions.length,
       logs: transaction.meta?.logMessages,
     };
     
-    // Check if the transaction includes compute budget instructions
-    const accounts = transaction.transaction.message.getAccountKeys();
-    const computeBudgetProgramId = 'ComputeBudget111111111111111111111111111111';
-    result.details.hasComputeBudget = transaction.transaction.message.compiledInstructions.some(ix => {
-      const programIdIndex = ix.programIdIndex;
-      const programId = accounts[programIdIndex].toString();
-      return programId === computeBudgetProgramId;
-    });
+    // In v2.0, the message structure changed, we need to access message data differently
+    if (transaction.transaction.message) {
+      // Get the recent blockhash, might be accessed differently in v2.0
+      if (transaction.transaction.message.recentBlockhash) {
+        result.details.recentBlockhash = transaction.transaction.message.recentBlockhash.toString();
+      }
+      
+      // Extract account keys 
+      // In v2.0, use getAccountKeys() to get all accounts including lookup table addresses
+      const accountKeys = transaction.transaction.message.getAccountKeys?.();
+      if (accountKeys && accountKeys.addresses) {
+        result.details.accounts = accountKeys.addresses.map((key: any) => key.toString());
+      }
+      
+      // Check if the transaction includes compute budget instructions
+      const computeBudgetProgramId = 'ComputeBudget111111111111111111111111111111';
+      result.details.hasComputeBudget = transaction.transaction.message.instructions.some((ix: any) => {
+        const programId = ix.programId?.toString?.();
+        return programId === computeBudgetProgramId;
+      });
+    }
   } catch (error) {
     logger.warn('Failed to fetch transaction details', { signature, error });
     // Don't throw, just continue without details

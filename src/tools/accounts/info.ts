@@ -4,8 +4,8 @@
  * This tool fetches and decodes information about a Solana account.
  */
 
-import { createSolanaRpc, base58, base64 } from '@solana/web3.js';
-import type { Address, Commitment, AccountInfo } from '@solana/web3.js';
+import { createSolanaRpc } from '@solana/web3.js';
+import type { Address, Commitment, Lamports } from '@solana/web3.js';
 import { getLogger } from '../../utils/logging.js';
 import { ConnectionManager } from '../../core/connection-manager.js';
 import { ValidationError, PublicKeyError, ConnectionError, tryCatch } from '../../utils/errors.js';
@@ -50,7 +50,7 @@ export interface GetAccountInfoResult {
   executable?: boolean;
   
   // Rent epoch
-  rentEpoch?: number;
+  rentEpoch?: number | bigint;
 }
 
 /**
@@ -93,27 +93,30 @@ async function execute(
         throw new ValidationError(
           'Invalid account address format',
           'address',
-          { cause: error }
+          { cause: error instanceof Error ? error : new Error(String(error)) }
         );
       }
       
       // Get account info from the RPC client
       // In web3.js v2.0, we need to use .send() after the RPC method call
-      const accountInfo = await rpcClient.getAccountInfo(accountAddress, {
+      const accountInfoResponse = await rpcClient.getAccountInfo(accountAddress, {
         commitment,
         encoding
       }).send();
       
       // If account doesn't exist, return exists: false
-      if (!accountInfo) {
+      if (!accountInfoResponse.value) {
         logger.info('Account not found', { address: params.address });
         return { exists: false };
       }
       
+      // Extract account info from the response value
+      const accountInfo = accountInfoResponse.value;
+      
       // Build response with account data
       const result: GetAccountInfoResult = {
         exists: true,
-        lamports: accountInfo.lamports,
+        lamports: Number(accountInfo.lamports),
         owner: accountInfo.owner.toString(),
         executable: accountInfo.executable,
         rentEpoch: accountInfo.rentEpoch
@@ -135,9 +138,9 @@ async function execute(
       result.account = {
         address: accountAddress,
         owner: accountInfo.owner,
-        lamports: accountInfo.lamports,
+        lamports: Number(accountInfo.lamports),
         executable: accountInfo.executable,
-        rentEpoch: accountInfo.rentEpoch,
+        rentEpoch: Number(accountInfo.rentEpoch),
         data: accountInfo.data
       };
       
@@ -157,10 +160,10 @@ async function execute(
       
       // Wrap any other error
       throw new ConnectionError(
-        `Failed to get account info: ${error.message}`,
+        `Failed to get account info: ${error instanceof Error ? error.message : String(error)}`,
         cluster,
         connectionManager.getEndpoint(cluster),
-        { cause: error }
+        { cause: error instanceof Error ? error : new Error(String(error)) }
       );
     }
   }, (error) => {
@@ -174,10 +177,10 @@ async function execute(
     
     // Convert general errors to connection errors
     return new ConnectionError(
-      `Failed to get account info: ${error.message}`,
+      `Failed to get account info: ${error instanceof Error ? error.message : String(error)}`,
       cluster,
       connectionManager.getEndpoint(cluster),
-      { cause: error }
+      { cause: error instanceof Error ? error : new Error(String(error)) }
     );
   });
 }

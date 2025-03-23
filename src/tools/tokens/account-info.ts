@@ -6,7 +6,6 @@
  */
 
 import { 
-  Connection, 
   PublicKey, 
   Commitment
 } from "@solana/web3.js";
@@ -14,8 +13,9 @@ import {
   getAccount,
   getAssociatedTokenAddress,
   TOKEN_PROGRAM_ID,
-  AccountLayout
-} from "@solana/spl-token";
+  TOKEN_ACCOUNT_SIZE as AccountLayout
+} from "@solana-program/token";
+import bs58 from "bs58";
 import { z } from "zod";
 import { getLogger } from "../../utils/logging.js";
 import { 
@@ -178,8 +178,8 @@ async function executeGetTokenAccountInfo(
           const account = await getAccount(
             connection,
             tokenAccount,
-            validatedParams.commitment as Commitment
-          );
+            { commitment: validatedParams.commitment as Commitment }
+          ).send();
           
           // Check mint filter if provided
           if (mint && !account.mint.equals(mint)) {
@@ -250,15 +250,18 @@ async function executeGetTokenAccountInfo(
       else if (owner && mint) {
         try {
           // Get the associated token account address
-          const associatedTokenAccount = await getAssociatedTokenAddress(mint, owner);
+          const associatedTokenAccount = await getAssociatedTokenAddress({
+            mint: mint, 
+            owner: owner
+          });
           
           try {
             // Try to fetch the associated token account
             const account = await getAccount(
               connection,
               associatedTokenAccount,
-              validatedParams.commitment as Commitment
-            );
+              { commitment: validatedParams.commitment as Commitment }
+            ).send();
             
             // Skip zero balances if showZeroBalance is false
             if (!validatedParams.showZeroBalance && account.amount === BigInt(0)) {
@@ -359,7 +362,7 @@ async function executeGetTokenAccountInfo(
           TOKEN_PROGRAM_ID,
           {
             filters: [
-              { dataSize: AccountLayout.span },
+              { dataSize: AccountLayout },
               {
                 memcmp: {
                   offset: 0,

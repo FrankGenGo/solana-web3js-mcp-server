@@ -6,12 +6,10 @@
  */
 
 import { 
-  Connection, 
   Keypair, 
   PublicKey, 
-  Transaction,
   Commitment,
-  sendAndConfirmTransaction
+  sendTransaction
 } from "@solana/web3.js";
 import { 
   createTransferInstruction,
@@ -19,7 +17,8 @@ import {
   createAssociatedTokenAccountInstruction,
   getAccount,
   TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
+} from "@solana-program/token";
+import bs58 from "bs58";
 import { z } from "zod";
 import { getLogger } from "../../utils/logging.js";
 import { 
@@ -82,7 +81,7 @@ function parseKeypairFromString(input: string, paramName: string): Keypair {
       return Keypair.fromSecretKey(new Uint8Array(secretKeyArray));
     } else {
       // Assume base58 encoded secret key
-      const secretKey = Buffer.from(input, "base58");
+      const secretKey = bs58.decode(input);
       return Keypair.fromSecretKey(secretKey);
     }
   } catch (error) {
@@ -171,7 +170,7 @@ async function executeTransferTokens(
         
         try {
           // Check if fromAddress is already a token account for this mint
-          const accountInfo = await getAccount(connection, fromAddress);
+          const accountInfo = await getAccount(connection, fromAddress).send();
           
           // Verify the account is for the correct mint
           if (!accountInfo.mint.equals(tokenMint)) {
@@ -192,11 +191,14 @@ async function executeTransferTokens(
           sourceTokenAccount = fromAddress;
         } catch (error) {
           // If not a token account, try to use the associated token account
-          sourceTokenAccount = await getAssociatedTokenAddress(tokenMint, fromAddress);
+          sourceTokenAccount = await getAssociatedTokenAddress({
+            mint: tokenMint, 
+            owner: fromAddress
+          });
           
           // Verify the associated token account exists
           try {
-            await getAccount(connection, sourceTokenAccount);
+            await getAccount(connection, sourceTokenAccount).send();
           } catch (e) {
             throw new TokenError(
               "Source associated token account does not exist",
@@ -209,11 +211,14 @@ async function executeTransferTokens(
         // If fromAddress not provided, assume authority is the token owner
         // and use their associated token account
         fromAddress = authorityKeypair.publicKey;
-        sourceTokenAccount = await getAssociatedTokenAddress(tokenMint, fromAddress);
+        sourceTokenAccount = await getAssociatedTokenAddress({
+          mint: tokenMint, 
+          owner: fromAddress
+        });
         
         // Verify the associated token account exists
         try {
-          await getAccount(connection, sourceTokenAccount);
+          await getAccount(connection, sourceTokenAccount).send();
         } catch (e) {
           throw new TokenError(
             "Authority's associated token account does not exist",
@@ -229,7 +234,7 @@ async function executeTransferTokens(
       
       try {
         // Check if toAddress is already a token account for this mint
-        const accountInfo = await getAccount(connection, toAddress);
+        const accountInfo = await getAccount(connection, toAddress).send();
         
         // Verify the account is for the correct mint
         if (!accountInfo.mint.equals(tokenMint)) {
@@ -256,11 +261,14 @@ async function executeTransferTokens(
         if (validatedParams.autoCreateAccount) {
           try {
             // Get the associated token account for the destination
-            destinationTokenAccount = await getAssociatedTokenAddress(tokenMint, toAddress);
+            destinationTokenAccount = await getAssociatedTokenAddress({
+              mint: tokenMint, 
+              owner: toAddress
+            });
             
             // Check if the associated token account already exists
             try {
-              await getAccount(connection, destinationTokenAccount);
+              await getAccount(connection, destinationTokenAccount).send();
               logger.info("Using existing destination associated token account", {
                 destinationTokenAccount: destinationTokenAccount.toString()
               });
@@ -290,7 +298,7 @@ async function executeTransferTokens(
       }
       
       // Get token decimals by fetching a token account
-      const sourceAccount = await getAccount(connection, sourceTokenAccount);
+      const sourceAccount = await getAccount(connection, sourceTokenAccount).send();
       const tokenDecimals = sourceAccount.mint.toString() ? 9 : 9; // Default to 9 if we can't determine
       
       // Calculate the actual token amount to transfer (accounting for decimals)
@@ -311,29 +319,29 @@ async function executeTransferTokens(
         );
       }
       
-      // Create transaction
-      const transaction = new Transaction();
+      // Create instructions array
+      const instructions = [];
       
       // Add instruction to create destination token account if needed
       if (destinationCreated) {
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            authorityKeypair.publicKey,
-            destinationTokenAccount,
-            toAddress,
-            tokenMint
-          )
+        instructions.push(
+          createAssociatedTokenAccountInstruction({
+            payer: authorityKeypair.publicKey,
+            associatedToken: destinationTokenAccount,
+            owner: toAddress,
+            mint: tokenMint
+          })
         );
       }
       
       // Add instruction to transfer tokens
-      transaction.add(
-        createTransferInstruction(
-          sourceTokenAccount,
-          destinationTokenAccount,
-          authorityKeypair.publicKey,
-          transferAmount
-        )
+      instructions.push(
+        createTransferInstruction({
+          source: sourceTokenAccount,
+          destination: destinationTokenAccount,
+          owner: authorityKeypair.publicKey,
+          amount: transferAmount
+        })
       );
       
       // Add memo instruction if specified
@@ -345,16 +353,16 @@ async function executeTransferTokens(
         });
       }
       
-      // Send and confirm transaction
-      const signature = await sendAndConfirmTransaction(
+      // Send transaction
+      const { signature } = await sendTransaction(
         connection,
-        transaction,
-        [authorityKeypair],
+        instructions,
         {
-          commitment: validatedParams.commitment as Commitment,
+          signers: [authorityKeypair],
+          preflightCommitment: validatedParams.commitment as Commitment,
           skipPreflight: validatedParams.skipPreflight
         }
-      );
+      ).send();
       
       logger.info("Tokens transferred successfully", {
         tokenMint: tokenMint.toString(),

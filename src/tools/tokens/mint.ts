@@ -6,21 +6,20 @@
  */
 
 import { 
-  Connection, 
   Keypair, 
   PublicKey, 
-  Transaction,
   Commitment,
-  sendAndConfirmTransaction
+  sendTransaction
 } from "@solana/web3.js";
 import { 
-  createMintToInstruction,
+  createMintToCheckedInstruction,
   getMint,
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
   getAccount,
   TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
+} from "@solana-program/token";
+import bs58 from "bs58";
 import { z } from "zod";
 import { getLogger } from "../../utils/logging.js";
 import { 
@@ -80,7 +79,7 @@ function parseKeypairFromString(input: string, paramName: string): Keypair {
       return Keypair.fromSecretKey(new Uint8Array(secretKeyArray));
     } else {
       // Assume base58 encoded secret key
-      const secretKey = Buffer.from(input, "base58");
+      const secretKey = bs58.decode(input);
       return Keypair.fromSecretKey(secretKey);
     }
   } catch (error) {
@@ -152,7 +151,7 @@ async function executeMintTokens(
       const connection = connectionManager.getConnection(validatedParams.cluster);
       
       // Fetch token mint info to verify mint authority and get decimals
-      const mintInfo = await getMint(connection, tokenMint);
+      const mintInfo = await getMint(connection, tokenMint).send();
       
       // Verify mint authority matches
       if (!mintInfo.mintAuthority || 
@@ -180,7 +179,7 @@ async function executeMintTokens(
       
       try {
         // First check if the destination is already a token account for this mint
-        const accountInfo = await getAccount(connection, destinationAddress);
+        const accountInfo = await getAccount(connection, destinationAddress).send();
         
         // Verify the account is for the correct mint
         if (!accountInfo.mint.equals(tokenMint)) {
@@ -207,12 +206,15 @@ async function executeMintTokens(
         if (validatedParams.autoCreateAccount) {
           try {
             // Get the associated token account for the owner
-            tokenAccount = await getAssociatedTokenAddress(tokenMint, destinationAddress);
+            tokenAccount = await getAssociatedTokenAddress({
+              mint: tokenMint,
+              owner: destinationAddress
+            });
             isAssociatedTokenAccount = true;
             
             // Check if the associated token account already exists
             try {
-              await getAccount(connection, tokenAccount);
+              await getAccount(connection, tokenAccount).send();
               logger.info("Using existing associated token account", {
                 tokenAccount: tokenAccount.toString()
               });
@@ -241,41 +243,42 @@ async function executeMintTokens(
         }
       }
       
-      // Create transaction
-      const transaction = new Transaction();
+      // Create instructions array
+      const instructions = [];
       
       // Add instruction to create associated token account if needed
       if (accountCreated) {
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            mintAuthorityKeypair.publicKey,
-            tokenAccount,
-            destinationAddress,
-            tokenMint
-          )
+        instructions.push(
+          createAssociatedTokenAccountInstruction({
+            payer: mintAuthorityKeypair.publicKey,
+            associatedToken: tokenAccount,
+            owner: destinationAddress,
+            mint: tokenMint
+          })
         );
       }
       
       // Add instruction to mint tokens
-      transaction.add(
-        createMintToInstruction(
-          tokenMint,
-          tokenAccount,
-          mintAuthorityKeypair.publicKey,
-          mintAmount
-        )
+      instructions.push(
+        createMintToCheckedInstruction({
+          mint: tokenMint,
+          destination: tokenAccount,
+          authority: mintAuthorityKeypair.publicKey,
+          amount: mintAmount,
+          decimals: mintInfo.decimals
+        })
       );
       
-      // Send and confirm transaction
-      const signature = await sendAndConfirmTransaction(
+      // Send transaction
+      const { signature } = await sendTransaction(
         connection,
-        transaction,
-        [mintAuthorityKeypair],
+        instructions,
         {
-          commitment: validatedParams.commitment as Commitment,
+          signers: [mintAuthorityKeypair],
+          preflightCommitment: validatedParams.commitment as Commitment,
           skipPreflight: validatedParams.skipPreflight
         }
-      );
+      ).send();
       
       logger.info("Tokens minted successfully", {
         tokenMint: tokenMint.toString(),

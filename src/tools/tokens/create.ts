@@ -7,25 +7,23 @@
  */
 
 import { 
-  Connection, 
   Keypair, 
   PublicKey, 
-  Transaction,
   SystemProgram,
   LAMPORTS_PER_SOL,
-  sendAndConfirmTransaction,
+  sendTransaction,
   Commitment
 } from "@solana/web3.js";
-import { 
-  createInitializeMintInstruction,
-  getMinimumBalanceForRentExemptMint,
-  MINT_SIZE,
+import {
   TOKEN_PROGRAM_ID,
-  MintLayout,
+  createInitializeMintInstruction,
+  MINT_SIZE,
+  getMinimumBalanceForRentExemptMint,
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
-  createMintToInstruction
-} from "@solana/spl-token";
+  createMintToCheckedInstruction
+} from "@solana-program/token";
+import bs58 from "bs58";
 import { z } from "zod";
 import { getLogger } from "../../utils/logging.js";
 import { 
@@ -88,7 +86,7 @@ function parseKeypairFromString(input: string, paramName: string): Keypair {
       return Keypair.fromSecretKey(new Uint8Array(secretKeyArray));
     } else {
       // Assume base58 encoded secret key
-      const secretKey = Buffer.from(input, "base58");
+      const secretKey = bs58.decode(input);
       return Keypair.fromSecretKey(secretKey);
     }
   } catch (error) {
@@ -125,7 +123,7 @@ async function executeCreateToken(
     
     // Set up token creation
     return tryCatch(async () => {
-      // Parse keypairs
+      // Parse public keys
       let mintAuthority: PublicKey;
       try {
         mintAuthority = new PublicKey(validatedParams.mintAuthority);
@@ -204,7 +202,7 @@ async function executeCreateToken(
       const connection = connectionManager.getConnection(validatedParams.cluster);
       
       // Calculate minimum balance for mint account
-      const lamports = await getMinimumBalanceForRentExemptMint(connection);
+      const lamports = await getMinimumBalanceForRentExemptMint(connection).send();
       
       // Create instructions for the transaction
       const instructions = [
@@ -213,17 +211,16 @@ async function executeCreateToken(
           fromPubkey: payerKeypair.publicKey,
           newAccountPubkey: mintKeypair.publicKey,
           space: MINT_SIZE,
-          lamports,
+          lamports: lamports,
           programId: TOKEN_PROGRAM_ID
         }),
         // Initialize mint
-        createInitializeMintInstruction(
-          mintKeypair.publicKey,
-          validatedParams.decimals,
-          mintAuthority,
-          freezeAuthority ?? null,
-          TOKEN_PROGRAM_ID
-        )
+        createInitializeMintInstruction({
+          mint: mintKeypair.publicKey,
+          decimals: validatedParams.decimals,
+          mintAuthority: mintAuthority,
+          freezeAuthority: freezeAuthority || null
+        })
       ];
       
       // Add initial minting instructions if required
@@ -235,44 +232,43 @@ async function executeCreateToken(
         const mintAmount = validatedParams.initialSupply * Math.pow(10, validatedParams.decimals);
         
         // Get or create the associated token account for the receiver
-        const associatedTokenAccount = await getAssociatedTokenAddress(
-          mintKeypair.publicKey,
-          initialSupplyReceiver
-        );
+        const associatedTokenAccount = await getAssociatedTokenAddress({
+          mint: mintKeypair.publicKey,
+          owner: initialSupplyReceiver
+        });
         
         // Add instruction to create token account if needed
         instructions.push(
-          createAssociatedTokenAccountInstruction(
-            payerKeypair.publicKey,
-            associatedTokenAccount,
-            initialSupplyReceiver,
-            mintKeypair.publicKey
-          )
+          createAssociatedTokenAccountInstruction({
+            payer: payerKeypair.publicKey,
+            associatedToken: associatedTokenAccount,
+            owner: initialSupplyReceiver,
+            mint: mintKeypair.publicKey
+          })
         );
         
         // Add instruction to mint tokens
         instructions.push(
-          createMintToInstruction(
-            mintKeypair.publicKey,
-            associatedTokenAccount,
-            mintAuthority,
-            BigInt(mintAmount)
-          )
+          createMintToCheckedInstruction({
+            mint: mintKeypair.publicKey,
+            destination: associatedTokenAccount,
+            authority: mintAuthority,
+            amount: BigInt(mintAmount),
+            decimals: validatedParams.decimals
+          })
         );
       }
       
-      // Create and send transaction
-      const transaction = new Transaction().add(...instructions);
-      
-      const signature = await sendAndConfirmTransaction(
-        connection,
-        transaction,
-        [payerKeypair, mintKeypair],
+      // Send transaction
+      const { signature } = await sendTransaction(
+        connection, 
+        instructions, 
         {
-          commitment: validatedParams.commitment as Commitment,
+          signers: [payerKeypair, mintKeypair],
+          preflightCommitment: validatedParams.commitment as Commitment,
           skipPreflight: validatedParams.skipPreflight
         }
-      );
+      ).send();
       
       logger.info("Token created successfully", {
         mint: mintKeypair.publicKey.toString(),

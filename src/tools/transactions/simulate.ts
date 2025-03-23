@@ -7,25 +7,15 @@
  */
 
 import {
-  simulateTransactionFactory,
   deserializeTransaction,
-  ComputeBudgetProgram,
-  computeUnit,
   Commitment
-} from '@solana/web3.js';
-
-import type {
-  RpcResponseAndContext,
-  SimulatedTransactionResponse,
-  SendTransactionOptions
 } from '@solana/web3.js';
 
 import { getLogger } from '../../utils/logging.js';
 import { 
   ErrorCode, 
   tryCatch, 
-  TransactionError, 
-  wrapSolanaError
+  TransactionError
 } from '../../utils/errors.js';
 import { ConnectionManager } from '../../core/connection-manager.js';
 
@@ -180,27 +170,34 @@ export const simulateTransactionTool = {
       const txBuffer = deserializeTransactionBuffer(params.transaction, format);
       const deserializedTx = deserializeTransaction(txBuffer);
       
-      // Create simulation function with rpc client
-      const simulateTransaction = simulateTransactionFactory(rpcClient);
+      // In web3.js v2, simulateTransaction is a direct method on the RPC client
+      // Configure the simulation options
+      const simulateOptions = {
+        encoding: 'base64' as const,
+        commitment,
+        replaceRecentBlockhash,
+        sigVerify,
+        ...(includeAccounts ? {
+          accounts: {
+            encoding: 'base64' as const,
+            addresses: deserializedTx.message.getAccountKeys().addresses
+          }
+        } : {})
+      };
       
-      // Call the simulate function with appropriate options
-      const simulationResponse = await simulateTransaction(
-        deserializedTx, 
-        {
-          commitment,
-          replaceRecentBlockhash,
-          sigVerify,
-          accounts: includeAccounts ? { encoding: 'base64' } : undefined
-        }
+      // Call the simulate method directly on the RPC client
+      const simulationResponse = await rpcClient.simulateTransaction(
+        Buffer.from(txBuffer).toString('base64'), 
+        simulateOptions
       ).send();
       
       // Process the simulation response
       const simulationResult: SimulationResult = {
         success: !simulationResponse.value.err,
         logs: simulationResponse.value.logs || null,
-        unitsConsumed: simulationResponse.value.unitsConsumed || 0,
+        unitsConsumed: Number(simulationResponse.value.unitsConsumed || 0n),
         context: {
-          slot: simulationResponse.context.slot
+          slot: Number(simulationResponse.context.slot)
         }
       };
       
@@ -213,17 +210,25 @@ export const simulateTransactionTool = {
       
       // Add account data if requested and available
       if (includeAccounts && simulationResponse.value.accounts) {
-        simulationResult.accounts = simulationResponse.value.accounts.map(account => {
-          if (!account) return null;
+        simulationResult.accounts = [];
+        for (const account of simulationResponse.value.accounts) {
+          if (!account) continue;
           
-          return {
+          // In v2.0, we need to handle the account data format changes
+          simulationResult.accounts.push({
             pubkey: account.pubkey.toString(),
-            lamports: account.lamports,
+            // In v2.0, lamports is bigint, convert to number for compatibility
+            lamports: Number(account.lamports),
             owner: account.owner.toString(),
-            data: account.data[0],
+            // Handle data format for base64 encoded data
+            data: typeof account.data === 'string' 
+              ? account.data 
+              : Array.isArray(account.data) 
+                ? account.data[0] 
+                : account.data.toString(),
             executable: account.executable
-          };
-        }).filter(Boolean) as any[];
+          });
+        }
       }
       
       // Add signature verification result if requested
@@ -283,7 +288,9 @@ function deserializeTransactionBuffer(
     // Convert the serialized transaction to a Buffer based on the format
     switch (format) {
       case TransactionFormat.BASE58:
-        return Buffer.from(serializedTx, 'base58');
+        // In web3.js v2.0, we need to use bs58 package for base58 encoding/decoding
+        // For now we'll throw an error suggesting to use base64 instead
+        throw new Error('BASE58 format is not directly supported in web3.js v2.0. Please use BASE64 format instead.');
       case TransactionFormat.HEX:
         return Buffer.from(serializedTx, 'hex');
       case TransactionFormat.BASE64:

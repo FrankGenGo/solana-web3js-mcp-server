@@ -101,40 +101,66 @@ async function execute(params: FindProgramAccountsParams): Promise<FindProgramAc
         throw new ValidationError(
           'Invalid program ID format',
           'programId',
-          { cause: error }
+          { cause: error instanceof Error ? error : new Error(String(error)) }
         );
       }
       
-      // Prepare filters if any
-      const filters = params.filters?.map(filter => {
-        return {
-          memcmp: {
-            offset: filter.offset || 0,
-            bytes: filter.bytes || '',
-          }
-        };
-      });
+      // For v2.0 API, we need to use a different approach for filters
+      // The filter format has changed significantly
       
-      // Add optional dataSize filter if specified
-      if (params.filters?.some(f => f.dataSize !== undefined)) {
-        const dataSizeFilter = params.filters.find(f => f.dataSize !== undefined);
-        if (dataSizeFilter) {
-          filters?.push({
-            dataSize: dataSizeFilter.dataSize
-          });
+      // Define the options object without filters first
+      const options: {
+        commitment: Commitment;
+        encoding: 'base64' | 'jsonParsed';
+        filters?: any;
+      } = {
+        commitment,
+        encoding
+      };
+      
+      // Only add filters if we actually have some
+      if (params.filters?.length) {
+        // Convert each filter to the correct v2.0 format
+        const v2Filters = params.filters.map(filter => {
+          if (filter.bytes !== undefined) {
+            // memcmp filter
+            return {
+              memcmp: {
+                bytes: filter.bytes.toString(), // Ensure it's a string
+                offset: BigInt(filter.offset || 0),
+                encoding: 'base58' as const // Use const assertion for literal type
+              }
+            };
+          } else if (filter.dataSize !== undefined) {
+            // dataSize filter
+            return {
+              dataSize: BigInt(filter.dataSize)
+            };
+          }
+          // Skip invalid filters
+          return null;
+        }).filter(f => f !== null); // Remove any null filters
+        
+        // Only set filters if we have valid ones
+        if (v2Filters.length > 0) {
+          options.filters = v2Filters;
         }
       }
       
-      // Get program accounts from the RPC client
-      // In web3.js v2.0, we need to use .send() after the RPC method call
-      const programAccounts = await rpcClient.getProgramAccounts(programAddress, {
-        commitment,
-        encoding,
-        filters
-      }).send();
+      // Get program accounts from the RPC client with our carefully constructed options
+      const programAccountsResponse = await rpcClient.getProgramAccounts(
+        programAddress, 
+        options
+      ).send();
+      
+      // For v2.0, extract value from response
+      const programAccounts = programAccountsResponse.value;
+      
+      // Convert to array we can work with
+      const accountsList = Array.from(programAccounts);
       
       // Limit results if needed
-      const limitedAccounts = programAccounts.slice(0, limit);
+      const limitedAccounts = accountsList.slice(0, limit);
       
       // Calculate statistics about account sizes
       let minSize = Number.MAX_SAFE_INTEGER;
@@ -145,8 +171,28 @@ async function execute(params: FindProgramAccountsParams): Promise<FindProgramAc
       const accountsData: SolanaAccountData[] = [];
       
       for (const { pubkey, account } of limitedAccounts) {
+        // Get data size - handle different formats
+        let dataSize = 0;
+        
+        // In v2.0, data can take different formats
+        // We need to handle each possibility
+        if (account.data) {
+          if (typeof account.data === 'string') {
+            // Simple string format
+            dataSize = account.data.length;
+          } else if (Array.isArray(account.data)) {
+            // [data, encoding] format - cast to ensure type safety
+            const dataArray = account.data as unknown as [string, string];
+            if (dataArray.length >= 1 && typeof dataArray[0] === 'string') {
+              dataSize = dataArray[0].length;
+            }
+          } else {
+            // For other formats, we'll just use 0 as we can't determine size
+            dataSize = 0;
+          }
+        }
+        
         // Track size statistics
-        const dataSize = account.data.length;
         minSize = Math.min(minSize, dataSize);
         maxSize = Math.max(maxSize, dataSize);
         totalSize += dataSize;
@@ -156,9 +202,9 @@ async function execute(params: FindProgramAccountsParams): Promise<FindProgramAc
           accountsData.push({
             address: pubkey,
             owner: account.owner,
-            lamports: account.lamports,
+            lamports: Number(account.lamports),
             executable: account.executable,
-            rentEpoch: account.rentEpoch,
+            rentEpoch: Number(account.rentEpoch),
             data: account.data
           });
         }
@@ -188,7 +234,7 @@ async function execute(params: FindProgramAccountsParams): Promise<FindProgramAc
       logger.info('Successfully found program accounts', {
         programId: params.programId,
         count: result.count,
-        limitApplied: programAccounts.length > limit
+        limitApplied: accountsList.length > limit
       });
       
       return result;
@@ -200,10 +246,10 @@ async function execute(params: FindProgramAccountsParams): Promise<FindProgramAc
       
       // Wrap any other error
       throw new ConnectionError(
-        `Failed to find program accounts: ${error.message}`,
+        `Failed to find program accounts: ${error instanceof Error ? error.message : String(error)}`,
         cluster,
         connectionManager.getEndpoint(cluster),
-        { cause: error }
+        { cause: error instanceof Error ? error : new Error(String(error)) }
       );
     }
   }, (error) => {
@@ -217,10 +263,10 @@ async function execute(params: FindProgramAccountsParams): Promise<FindProgramAc
     
     // Convert general errors to connection errors
     return new ConnectionError(
-      `Failed to find program accounts: ${error.message}`,
+      `Failed to find program accounts: ${error instanceof Error ? error.message : String(error)}`,
       cluster,
       connectionManager.getEndpoint(cluster),
-      { cause: error }
+      { cause: error instanceof Error ? error : new Error(String(error)) }
     );
   });
 }
